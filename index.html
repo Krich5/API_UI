@@ -3,29 +3,29 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CX Advanced Solutions - Webex API Runner</title>
+  <title>CSV → Webex API Runner</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <style>
     :root { --bg:#0b1020; --card:#131a2a; --muted:#92a0b8; --fg:#e9edf5; --accent:#7dd3fc; --warn:#fbbf24; --err:#f87171; }
     body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, "Apple Color Emoji","Segoe UI Emoji"; background:linear-gradient(180deg,#0b1020,#0a132a); color:var(--fg); }
-    .wrap { max-width:1100px; margin:0 auto; padding:32px 20px 80px; }
+    .wrap { max-width:1400px; margin:0 auto; padding:32px 20px 80px; }
     .header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
     .title { font-size:clamp(24px,3vw,38px); font-weight:800; letter-spacing:.2px; }
     .sub { color:var(--muted); }
     .logo { height:40px; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; }
-    .card { background:var(--card); border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
-    label { display:block; font-size:12px; color:var(--muted); margin:6px 0 6px; }
-    input, select, textarea { width:100%; border-radius:12px; border:1px solid rgba(255,255,255,.08); background:#0e1525; color:var(--fg); padding:10px 12px; outline:none; }
+    .grid { display:grid; grid-template-columns:2fr 1fr; gap:20px; }
+    .card { background:var(--card); border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+    label { display:block; font-size:13px; color:var(--muted); margin:8px 0 6px; }
+    input, select, textarea { width:100%; border-radius:12px; border:1px solid rgba(255,255,255,.08); background:#0e1525; color:var(--fg); padding:10px 12px; outline:none; font-size:14px; }
     input[type="file"]{ padding:8px; }
-    .row { display:flex; gap:10px; align-items:center; }
-    .btn { background:linear-gradient(135deg,#22d3ee,#3b82f6); border:none; color:#06111d; font-weight:700; padding:10px 14px; border-radius:12px; cursor:pointer; }
+    .row { display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+    .btn { background:linear-gradient(135deg,#22d3ee,#3b82f6); border:none; color:#06111d; font-weight:700; padding:10px 18px; border-radius:12px; cursor:pointer; }
     .btn.secondary { background:#0e1525; color:var(--fg); border:1px solid rgba(255,255,255,.1); }
     .btn:disabled { opacity:.6; cursor:not-allowed; }
     .hint { font-size:12px; color:var(--muted); }
     .progress { height:10px; background:#0e1525; border:1px solid rgba(255,255,255,.08); border-radius:999px; overflow:hidden; }
     .bar { height:100%; background:linear-gradient(90deg,#22d3ee,#3b82f6); width:0%; transition:width .25s ease; }
-    .log { height:240px; overflow:auto; background:#0e1525; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px; font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; font-size:12px; white-space:pre-wrap; }
+    .log { height:280px; overflow:auto; background:#0e1525; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:12px; font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; font-size:13px; white-space:pre-wrap; }
     .danger { color:var(--err); }
     .warn { color:var(--warn); }
   </style>
@@ -35,8 +35,8 @@
   <div class="wrap">
     <div class="header">
       <div>
-        <div class="title">CX Advanced Solutions - Webex API Runner</div>
-        <div class="sub">Upload a CSV, pick an action, and we’ll do the rest!</div>
+        <div class="title">CSV → Webex API Runner</div>
+        <div class="sub">Upload a CSV, pick an action, and we’ll call <code>https://webexapis.com</code> with your Bearer token.</div>
       </div>
       <img src="CX%20Advanced%20Solutions_Smaller_white.png" alt="Logo" class="logo" />
     </div>
@@ -53,17 +53,17 @@
         <div class="hint">Token is not saved; it lives only while the page is open.</div>
 
         <div class="row">
-          <div style="flex:1;">
+          <div style="flex:2;">
             <label>CSV</label>
             <input id="csvFile" type="file" accept=".csv" />
           </div>
-          <div style="width:150px;">
+          <div style="flex:1; min-width:140px;">
             <label>Concurrency</label>
             <input id="concurrency" type="number" min="1" max="16" value="4" />
           </div>
         </div>
 
-        <div class="row" style="margin-top:10px;">
+        <div class="row" style="margin-top:12px;">
           <label class="row" style="gap:8px;align-items:center;">
             <input id="dryRun" type="checkbox" checked>
             <span>Dry-run (parse & validate only)</span>
@@ -74,15 +74,15 @@
           </label>
         </div>
 
-        <div class="row" style="margin-top:12px;">
+        <div class="row" style="margin-top:16px;flex-wrap:wrap;">
           <button id="runBtn" class="btn">Run</button>
           <button id="cancelBtn" class="btn secondary" disabled>Cancel</button>
           <button id="downloadErrorsBtn" class="btn secondary" disabled>Download errors CSV</button>
         </div>
 
-        <div style="margin-top:14px;">
+        <div style="margin-top:18px;">
           <div class="progress"><div id="bar" class="bar"></div></div>
-          <div id="status" class="hint" style="margin-top:6px;">Idle</div>
+          <div id="status" class="hint" style="margin-top:8px;">Idle</div>
         </div>
       </div>
 
