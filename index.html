@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <style>
     :root { --bg:#0b1020; --card:#131a2a; --muted:#92a0b8; --fg:#e9edf5; --accent:#7dd3fc; --warn:#fbbf24; --err:#f87171; }
+    * , *::before, *::after { box-sizing: border-box; }
     body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, "Apple Color Emoji","Segoe UI Emoji"; background:linear-gradient(180deg,#0b1020,#0a132a); color:var(--fg); }
     .wrap { max-width:1400px; margin:0 auto; padding:32px 20px 80px; }
     .header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
@@ -14,7 +15,7 @@
     .sub { color:var(--muted); }
     .logo { height:40px; }
     .grid { display:grid; grid-template-columns:2fr 1fr; gap:20px; }
-    .card { background:var(--card); border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+    .card { position:relative; background:var(--card); border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.25); overflow:hidden; }
     label { display:block; font-size:13px; color:var(--muted); margin:8px 0 6px; }
     input, select, textarea { width:100%; border-radius:12px; border:1px solid rgba(255,255,255,.08); background:#0e1525; color:var(--fg); padding:10px 12px; outline:none; font-size:14px; }
     input[type="file"]{ padding:8px; }
@@ -23,7 +24,7 @@
     .btn.secondary { background:#0e1525; color:var(--fg); border:1px solid rgba(255,255,255,.1); }
     .btn:disabled { opacity:.6; cursor:not-allowed; }
     .hint { font-size:12px; color:var(--muted); }
-    .progress { height:10px; background:#0e1525; border:1px solid rgba(255,255,255,.08); border-radius:999px; overflow:hidden; }
+    .progress { height:10px; background:#0e1525; border:1px solid rgba(255,255,255,.08); border-radius:999px; overflow:hidden; width:100%; }
     .bar { height:100%; background:linear-gradient(90deg,#22d3ee,#3b82f6); width:0%; transition:width .25s ease; }
     .log { height:280px; overflow:auto; background:#0e1525; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:12px; font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; font-size:13px; white-space:pre-wrap; }
     .danger { color:var(--err); }
@@ -36,7 +37,7 @@
     <div class="header">
       <div>
         <div class="title">Webex API Tool</div>
-        <div class="sub">Upload a CSV, pick an action, and we’ll call <code>https://webexapis.com</code> with your Bearer token.</div>
+        <div class="sub">Upload a CSV, pick an action, and we’ll call do the rest!</div>
       </div>
       <img src="CX%20Advanced%20Solutions_Smaller_white.png" alt="Logo" class="logo" />
     </div>
@@ -51,13 +52,9 @@
         <div class="hint">Token is not saved; it lives only while the page is open.</div>
 
         <div class="row">
-          <div style="flex:2;">
+          <div style="flex:1; min-width:260px;">
             <label>CSV</label>
             <input id="csvFile" type="file" accept=".csv" />
-          </div>
-          <div style="flex:1; min-width:140px;">
-            <label>Concurrency</label>
-            <input id="concurrency" type="number" min="1" max="16" value="4" />
           </div>
         </div>
 
@@ -87,7 +84,6 @@
     apiSelect: document.getElementById('apiSelect'),
     token: document.getElementById('token'),
     csvFile: document.getElementById('csvFile'),
-    concurrency: document.getElementById('concurrency'),
     runBtn: document.getElementById('runBtn'),
     cancelBtn: document.getElementById('cancelBtn'),
     downloadErrorsBtn: document.getElementById('downloadErrorsBtn'),
@@ -98,6 +94,7 @@
   };
 
   const BASE_URL = 'https://webexapis.com';
+  const CONCURRENCY = 4; // fixed
   const ACTIONS = {
     create_workspaces_ext:   { endpoint: '/v1/workspaces', method: 'POST', label: 'Create Workspaces Using Extension' },
     create_workspaces_phone: { endpoint: '/v1/workspaces', method: 'POST', label: 'Create Workspaces Using Phone Number' },
@@ -246,17 +243,25 @@
       log(`Parsed ${total} rows.`);
       setProgress(0, total);
 
+      // Fixed-width worker pool
       let done = 0;
-      for (let i = 0; i < rows.length; i++) {
-        try {
-          await sendRow({ row: rows[i], idx: i, cfg: { ...action, token, actionKey } });
-          log(`Row ${i+1}: ✓ success`);
-        } catch (e) {
-          log(`Row ${i+1}: ✗ ${e.message}`, 'error');
-          errors.push({ row: i+1, error: e.message, ...rows[i] });
+      const queue = rows.map((row, idx) => ({row, idx}));
+      async function worker() {
+        while (queue.length) {
+          const item = queue.shift();
+          if (!item) break;
+          try {
+            await sendRow({ row: item.row, idx: item.idx, cfg: { ...action, token, actionKey } });
+            log(`Row ${item.idx+1}: ✓ success`);
+          } catch (e) {
+            log(`Row ${item.idx+1}: ✗ ${e.message}`, 'error');
+            errors.push({ row: item.idx+1, error: e.message, ...item.row });
+          } finally {
+            done++; setProgress(done, total);
+          }
         }
-        done++; setProgress(done, total);
       }
+      await Promise.all(Array.from({length: CONCURRENCY}, worker));
 
       if (errors.length) {
         log(`Finished with ${errors.length} error(s).`, 'error');
