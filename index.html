@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CSV → Webex API Runner</title>
+  <title>Webex API Tool</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <style>
     :root { --bg:#0b1020; --card:#131a2a; --muted:#92a0b8; --fg:#e9edf5; --accent:#7dd3fc; --warn:#fbbf24; --err:#f87171; }
@@ -35,7 +35,7 @@
   <div class="wrap">
     <div class="header">
       <div>
-        <div class="title">CSV → Webex API Runner</div>
+        <div class="title">Webex API Tool</div>
         <div class="sub">Upload a CSV, pick an action, and we’ll call <code>https://webexapis.com</code> with your Bearer token.</div>
       </div>
       <img src="CX%20Advanced%20Solutions_Smaller_white.png" alt="Logo" class="logo" />
@@ -44,9 +44,7 @@
     <div class="grid">
       <div class="card">
         <label>API Action</label>
-        <select id="apiSelect">
-          <option value="create_workspaces" selected>Create Workspaces</option>
-        </select>
+        <select id="apiSelect"></select>
 
         <label>Bearer Token</label>
         <input id="token" type="password" placeholder="Paste your Bearer token" autocomplete="off" />
@@ -63,21 +61,11 @@
           </div>
         </div>
 
-        <div class="row" style="margin-top:12px;">
-          <label class="row" style="gap:8px;align-items:center;">
-            <input id="dryRun" type="checkbox" checked>
-            <span>Dry‑run (parse & validate only)</span>
-          </label>
-          <label class="row" style="gap:8px;align-items:center;">
-            <input id="stopOnError" type="checkbox">
-            <span>Stop on first error</span>
-          </label>
-        </div>
-
         <div class="row" style="margin-top:16px;flex-wrap:wrap;">
           <button id="runBtn" class="btn">Run</button>
           <button id="cancelBtn" class="btn secondary" disabled>Cancel</button>
           <button id="downloadErrorsBtn" class="btn secondary" disabled>Download errors CSV</button>
+          <button id="downloadTemplateBtn" class="btn secondary">Download template CSV</button>
         </div>
 
         <div style="margin-top:18px;">
@@ -100,11 +88,10 @@
     token: document.getElementById('token'),
     csvFile: document.getElementById('csvFile'),
     concurrency: document.getElementById('concurrency'),
-    dryRun: document.getElementById('dryRun'),
-    stopOnError: document.getElementById('stopOnError'),
     runBtn: document.getElementById('runBtn'),
     cancelBtn: document.getElementById('cancelBtn'),
     downloadErrorsBtn: document.getElementById('downloadErrorsBtn'),
+    downloadTemplateBtn: document.getElementById('downloadTemplateBtn'),
     bar: document.getElementById('bar'),
     status: document.getElementById('status'),
     log: document.getElementById('log'),
@@ -117,23 +104,20 @@
     create_workspaces_both:  { endpoint: '/v1/workspaces', method: 'POST', label: 'Create Workspaces Using Phone Number and Extension' },
   };
 
-  // Build body for each action from CSV row
   function buildBody(actionKey, row) {
-    // Helpers
     const n = (v) => (v === '' || v === undefined || v === null) ? undefined : Number(v);
     const s = (v) => (v === undefined || v === null) ? undefined : String(v);
     const listLicenses = (v) => {
       if (v == null) return [];
       const str = String(v).trim();
       if (!str) return [];
-      // allow comma/semicolon separated lists; otherwise single id
       return str.split(/[,;]/).map(x => x.trim()).filter(Boolean);
     };
     const phone = (v) => {
       if (!v) return undefined;
       const t = String(v).trim();
       if (!t) return undefined;
-      return t.startsWith('+') ? t : `+1${t}`; // per spec prepend +1
+      return t.startsWith('+') ? t : `+1${t}`;
     };
 
     const base = {
@@ -159,7 +143,6 @@
       base.calling.webexCalling.extension = s(row['extension']);
     }
 
-    // Remove undefined keys recursively
     function prune(obj) {
       if (Array.isArray(obj)) return obj.filter(v => v !== undefined && v !== null);
       const out = {}; Object.keys(obj).forEach(k => {
@@ -202,6 +185,26 @@
     a.click();
   }
 
+  function downloadTemplate() {
+    const headers = ['displayName','locationId','capacity','type','callingType','licenseId','extension','phoneNumber'];
+    const csv = headers.join(',') + '\n';
+    const blob = new Blob([csv], {type:'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'webex-workspaces-template.csv';
+    a.click();
+  }
+
+  (function initSelect(){
+    const sel = els.apiSelect;
+    sel.innerHTML = '';
+    Object.entries(ACTIONS).forEach(([key, cfg]) => {
+      const opt = document.createElement('option');
+      opt.value = key; opt.textContent = cfg.label; sel.appendChild(opt);
+    });
+    sel.value = 'create_workspaces_ext';
+  })();
+
   async function sendRow({row, idx, cfg}) {
     const { endpoint, method, token, actionKey } = cfg;
     const url = BASE_URL + endpoint;
@@ -215,17 +218,6 @@
     return text;
   }
 
-  // Populate dropdown labels
-  (function initSelect(){
-    const sel = els.apiSelect;
-    sel.innerHTML = '';
-    Object.entries(ACTIONS).forEach(([key, cfg]) => {
-      const opt = document.createElement('option');
-      opt.value = key; opt.textContent = cfg.label; sel.appendChild(opt);
-    });
-    sel.value = 'create_workspaces_ext';
-  })();
-
   async function run() {
     let errors = [];
     els.runBtn.disabled = true;
@@ -238,7 +230,6 @@
       const actionKey = els.apiSelect.value;
       const action = ACTIONS[actionKey];
       const token = els.token.value.trim();
-      if (!token && !els.dryRun.checked) throw new Error('Bearer token required.');
       const file = els.csvFile.files?.[0];
       if (!file) throw new Error('Please select a CSV file.');
 
@@ -254,17 +245,6 @@
       const total = rows.length;
       log(`Parsed ${total} rows.`);
       setProgress(0, total);
-
-      if (els.dryRun.checked) {
-        // validate first row build
-        try { JSON.stringify(buildBody(actionKey, rows[0] || {})); }
-        catch (e) { throw new Error('Mapping validation failed: ' + e.message); }
-        log('Dry-run only; no network calls made.', 'warn');
-        setProgress(total, total);
-        els.runBtn.disabled = false;
-        els.cancelBtn.disabled = true;
-        return;
-      }
 
       let done = 0;
       for (let i = 0; i < rows.length; i++) {
@@ -294,6 +274,7 @@
   }
 
   els.runBtn.addEventListener('click', run);
+  els.downloadTemplateBtn.addEventListener('click', downloadTemplate);
 })();
 </script>
 </body>
