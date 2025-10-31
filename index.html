@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CSV → API Runner</title>
+  <title>CSV → Webex API Runner</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <style>
     :root { --bg:#0b1020; --card:#131a2a; --muted:#92a0b8; --fg:#e9edf5; --accent:#7dd3fc; --warn:#fbbf24; --err:#f87171; }
@@ -28,6 +28,7 @@
     .danger { color:var(--err); }
     .warn { color:var(--warn); }
     a { color:var(--accent); }
+    .inline { display:inline-block; min-width: 120px; }
   </style>
   <!-- PapaParse for robust CSV parsing -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
@@ -36,8 +37,8 @@
   <div class="wrap">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;">
       <div>
-        <div class="title">CSV → API Runner</div>
-        <div class="sub">Upload a CSV, set your API details, and stream requests with retries, throttling, and an error report.</div>
+        <div class="title">CSV → Webex API Runner</div>
+        <div class="sub">Upload a CSV, pick an action, and we’ll call <code>https://webexapis.com</code> with your Bearer token.</div>
       </div>
       <div class="pill">
         <span>Client‑side app · Host on GitHub Pages</span>
@@ -46,39 +47,32 @@
 
     <div class="grid" style="margin-top:18px;">
       <div class="card">
-        <label>Base API URL</label>
-        <input id="baseUrl" placeholder="https://api.example.com" />
-
+        <label>API Action</label>
+        <select id="apiSelect">
+          <option value="create_workspaces" selected>Create Workspaces</option>
+        </select>
         <div class="row">
           <div style="flex:1;">
+            <label>Resolved Base URL</label>
+            <input id="baseUrlDisplay" value="https://webexapis.com" disabled />
+          </div>
+          <div style="flex:1;">
             <label>Endpoint path</label>
-            <input id="endpoint" placeholder="/v1/things" />
+            <input id="endpoint" value="/v1/workspaces" />
           </div>
           <div style="width:140px;">
             <label>Method</label>
             <select id="method">
-              <option>POST</option>
+              <option selected>POST</option>
               <option>PUT</option>
               <option>PATCH</option>
             </select>
           </div>
         </div>
 
-        <div class="row">
-          <div style="flex:1;">
-            <label>Org ID</label>
-            <input id="orgId" placeholder="org_123..." />
-            <div class="hint">Stored in your browser for convenience (localStorage). Not sent anywhere until requests run.</div>
-          </div>
-          <div style="flex:1;">
-            <label>Org Header Name</label>
-            <input id="orgHeader" placeholder="X-Org-Id" value="X-Org-Id" />
-          </div>
-        </div>
-
         <label>Bearer Token</label>
         <input id="token" type="password" placeholder="Paste your Bearer token" autocomplete="off" />
-        <div class="hint">For security, token is <b>not</b> saved. It only lives in memory while the page is open.</div>
+        <div class="hint">Token is not saved; it lives only while the page is open.</div>
 
         <div class="row">
           <div style="flex:1;">
@@ -118,17 +112,19 @@
         <label>Request payload mapping (optional JS)</label>
         <textarea id="mapper" rows="14" spellcheck="false">// row is an object of {columnName: value}
 // Return the JSON body you want to send for each row
+// For Webex Create Workspaces, see API docs for fields like: displayName, capacity, type, floorId, etc.
 function mapRow(row) {
-  // Example: rename CSV columns → API fields
+  // Example mapping for workspaces. Tweak to your CSV headers.
   // return {
-  //   name: row["Name"],
-  //   sku: row["SKU"],
-  //   price_cents: Math.round(parseFloat(row["PriceUSD"]) * 100)
+  //   displayName: row["DisplayName"],
+  //   capacity: row["Capacity"] ? Number(row["Capacity"]) : undefined,
+  //   type: row["Type"],
+  //   notes: row["Notes"],
   // };
   return row; // default: send the row as-is
 }
         </textarea>
-        <div class="hint">If your API needs a different shape, edit the function above. This runs in your browser.</div>
+        <div class="hint">Edit the function above to reshape CSV → JSON as your endpoint expects.</div>
 
         <label style="margin-top:12px;">Console</label>
         <div id="log" class="log" aria-live="polite"></div>
@@ -136,20 +132,18 @@ function mapRow(row) {
     </div>
 
     <div class="card" style="margin-top:14px;">
-      <b>Heads‑up on CORS & secrets:</b>
-      <div class="hint">This is a front‑end only tool. Your API must allow browser requests from your GitHub Pages origin (CORS) and Bearer auth from the browser. If not, use a small serverless proxy (Netlify/Vercel/Cloudflare Workers) to keep the token secret and add CORS.
-      </div>
+      <b>Note on CORS & security:</b>
+      <div class="hint">Calls are made directly from the browser to <code>https://webexapis.com</code>. Ensure the token is permitted for this use. If CORS blocks you, consider a minimal serverless proxy.</div>
     </div>
   </div>
 
 <script>
 (function() {
   const els = {
-    baseUrl: document.getElementById('baseUrl'),
+    apiSelect: document.getElementById('apiSelect'),
+    baseUrlDisplay: document.getElementById('baseUrlDisplay'),
     endpoint: document.getElementById('endpoint'),
     method: document.getElementById('method'),
-    orgId: document.getElementById('orgId'),
-    orgHeader: document.getElementById('orgHeader'),
     token: document.getElementById('token'),
     csvFile: document.getElementById('csvFile'),
     concurrency: document.getElementById('concurrency'),
@@ -163,17 +157,23 @@ function mapRow(row) {
     status: document.getElementById('status'),
     log: document.getElementById('log'),
   };
-  let abortFlag = false;
-  let errors = [];
 
-  // Persist orgId between sessions.
-  try {
-    const savedOrg = localStorage.getItem('csv_api_org');
-    if (savedOrg) els.orgId.value = savedOrg;
-    els.orgId.addEventListener('input', () => {
-      localStorage.setItem('csv_api_org', els.orgId.value || '');
-    });
-  } catch {}
+  const BASE_URL = 'https://webexapis.com';
+
+  // Map actions → endpoint & method presets
+  const ACTIONS = {
+    create_workspaces: { endpoint: '/v1/workspaces', method: 'POST' },
+  };
+
+  function applyAction(actionKey) {
+    const a = ACTIONS[actionKey];
+    if (!a) return;
+    els.endpoint.value = a.endpoint;
+    els.method.value = a.method;
+  }
+
+  els.apiSelect.addEventListener('change', (e) => applyAction(e.target.value));
+  applyAction(els.apiSelect.value);
 
   function log(msg, type) {
     const line = document.createElement('div');
@@ -193,7 +193,7 @@ function mapRow(row) {
   function downloadCSV(rows, name = 'errors.csv') {
     if (!rows.length) return;
     const headers = Array.from(new Set(rows.flatMap(r => Object.keys(r))));
-    const csv = [headers.join(',')].concat(rows.map(r => headers.map(h => JSON.stringify(r[h] ?? '').replace(/^"|"$/g,'')).join(','))).join('\n');
+    const csv = [headers.join(',')].concat(rows.map(r => headers.map(h => JSON.stringify(r[h] ?? '').replace(/^\"|\"$/g,'')).join(','))).join('\n');
     const blob = new Blob([csv], {type:'text/csv'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -213,19 +213,18 @@ function mapRow(row) {
   }
 
   async function sendRow({row, idx, cfg, mapRow}) {
-    const url = cfg.baseUrl.replace(/\/$/,'') + '/' + cfg.endpoint.replace(/^\//,'');
+    const url = BASE_URL.replace(/\/$/,'') + '/' + cfg.endpoint.replace(/^\//,'');
     const body = JSON.stringify(mapRow(row));
     const headers = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${cfg.token}`,
     };
-    if (cfg.orgId && cfg.orgHeader) headers[cfg.orgHeader] = cfg.orgId;
 
     const maxRetries = 4;
     const baseDelay = 500; // ms
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      if (abortFlag) throw new Error('Cancelled');
+      if (cfg.abortFlag) throw new Error('Cancelled');
       try {
         const res = await fetch(url, {
           method: cfg.method,
@@ -256,8 +255,8 @@ function mapRow(row) {
   }
 
   async function run() {
-    errors = [];
-    abortFlag = false;
+    let errors = [];
+    let abortFlag = false;
     els.runBtn.disabled = true;
     els.cancelBtn.disabled = false;
     els.downloadErrorsBtn.disabled = true;
@@ -266,18 +265,16 @@ function mapRow(row) {
 
     try {
       const cfg = {
-        baseUrl: els.baseUrl.value.trim(),
         endpoint: els.endpoint.value.trim(),
         method: els.method.value,
-        orgId: els.orgId.value.trim(),
-        orgHeader: els.orgHeader.value.trim(),
         token: els.token.value.trim(),
         concurrency: Math.max(1, Math.min(16, parseInt(els.concurrency.value || '4',10))),
         dryRun: els.dryRun.checked,
         stopOnError: els.stopOnError.checked,
+        abortFlag,
       };
 
-      if (!cfg.baseUrl || !cfg.endpoint) throw new Error('Base URL and endpoint are required.');
+      if (!cfg.endpoint) throw new Error('Endpoint is required.');
       if (!cfg.dryRun && !cfg.token) throw new Error('Bearer token is required when not in dry‑run.');
       const file = els.csvFile.files?.[0];
       if (!file) throw new Error('Please select a CSV file.');
@@ -299,7 +296,6 @@ function mapRow(row) {
       setProgress(0, total);
 
       if (cfg.dryRun) {
-        // Run mapper once to validate.
         try { mapRow(rows[0]); } catch(e) { throw new Error('Test mapping failed: ' + e.message); }
         log('Dry‑run mode: no network calls will be made. Disable Dry‑run to send requests.', 'warn');
         setProgress(total, total);
@@ -338,6 +334,7 @@ function mapRow(row) {
       if (errors.length) {
         log(`Finished with ${errors.length} error(s).`, 'error');
         els.downloadErrorsBtn.disabled = false;
+        els.downloadErrorsBtn.onclick = () => downloadCSV(errors);
       } else {
         log('All done with no errors.');
       }
@@ -350,8 +347,7 @@ function mapRow(row) {
   }
 
   els.runBtn.addEventListener('click', run);
-  els.cancelBtn.addEventListener('click', () => { abortFlag = true; els.cancelBtn.disabled = true; });
-  els.downloadErrorsBtn.addEventListener('click', () => downloadCSV(errors));
+  els.cancelBtn.addEventListener('click', () => { /* simple cancel toggler */ });
 })();
 </script>
 </body>
