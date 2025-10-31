@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <style>
     :root { --bg:#0b1020; --card:#131a2a; --muted:#92a0b8; --fg:#e9edf5; --accent:#7dd3fc; --warn:#fbbf24; --err:#f87171; }
-    * , *::before, *::after { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; }
     body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, "Apple Color Emoji","Segoe UI Emoji"; background:linear-gradient(180deg,#0b1020,#0a132a); color:var(--fg); }
     .wrap { max-width:1400px; margin:0 auto; padding:32px 20px 80px; }
     .header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
@@ -18,17 +18,29 @@
     .card { position:relative; background:var(--card); border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.25); overflow:hidden; }
     label { display:block; font-size:13px; color:var(--muted); margin:8px 0 6px; }
     input, select, textarea { width:100%; border-radius:12px; border:1px solid rgba(255,255,255,.08); background:#0e1525; color:var(--fg); padding:10px 12px; outline:none; font-size:14px; }
-    input[type="file"]{ padding:8px; }
+    textarea.small { height:120px; }
     .row { display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
     .btn { background:linear-gradient(135deg,#22d3ee,#3b82f6); border:none; color:#06111d; font-weight:700; padding:10px 18px; border-radius:12px; cursor:pointer; }
     .btn.secondary { background:#0e1525; color:var(--fg); border:1px solid rgba(255,255,255,.1); }
+    .btn.ghost { background:transparent; border:1px dashed rgba(255,255,255,.2); color:var(--fg); }
     .btn:disabled { opacity:.6; cursor:not-allowed; }
     .hint { font-size:12px; color:var(--muted); }
     .progress { height:10px; background:#0e1525; border:1px solid rgba(255,255,255,.08); border-radius:999px; overflow:hidden; width:100%; }
     .bar { height:100%; background:linear-gradient(90deg,#22d3ee,#3b82f6); width:0%; transition:width .25s ease; }
-    .log { height:280px; overflow:auto; background:#0e1525; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:12px; font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; font-size:13px; white-space:pre-wrap; }
+    .log { height:300px; overflow:auto; background:#0e1525; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:12px; font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; font-size:13px; white-space:pre-wrap; }
     .danger { color:var(--err); }
     .warn { color:var(--warn); }
+
+    /* Editable table */
+    .sheetWrap { margin-top:14px; border:1px solid rgba(255,255,255,.08); border-radius:14px; overflow:auto; background:#0e1525; }
+    table.sheet { width:100%; border-collapse:separate; border-spacing:0; min-width:800px; }
+    table.sheet th, table.sheet td { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.08); border-right:1px solid rgba(255,255,255,.06); }
+    table.sheet th { position:sticky; top:0; background:#0f172a; text-align:left; font-weight:700; color:#cbd5e1; z-index:1; }
+    table.sheet tr:last-child td { border-bottom:none; }
+    table.sheet th:last-child, table.sheet td:last-child { border-right:none; }
+    table.sheet td input { width:100%; background:transparent; border:none; color:var(--fg); outline:none; padding:0; }
+    .sheetToolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px; }
+    .sheetToolbar .hint { margin-left:auto; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
@@ -37,7 +49,7 @@
     <div class="header">
       <div>
         <div class="title">Webex API Tool</div>
-        <div class="sub">Upload a CSV, pick an action, and we’ll call do the rest!</div>
+        <div class="sub">Pick an action, edit data inline below, then run — calls go to <code>https://webexapis.com</code>.</div>
       </div>
       <img src="CX%20Advanced%20Solutions_Smaller_white.png" alt="Logo" class="logo" />
     </div>
@@ -51,18 +63,21 @@
         <input id="token" type="password" placeholder="Paste your Bearer token" autocomplete="off" />
         <div class="hint">Token is not saved; it lives only while the page is open.</div>
 
-        <div class="row">
-          <div style="flex:1; min-width:260px;">
-            <label>CSV</label>
-            <input id="csvFile" type="file" accept=".csv" />
-          </div>
+        <div class="sheetToolbar">
+          <button id="addRowBtn" class="btn secondary">Add row</button>
+          <button id="clearRowsBtn" class="btn secondary">Clear rows</button>
+          <button id="pasteCsvBtn" class="btn ghost">Paste CSV</button>
+          <span class="hint" id="colHint"></span>
+        </div>
+
+        <div class="sheetWrap">
+          <table class="sheet" id="sheet"></table>
         </div>
 
         <div class="row" style="margin-top:16px;flex-wrap:wrap;">
           <button id="runBtn" class="btn">Run</button>
           <button id="cancelBtn" class="btn secondary" disabled>Cancel</button>
           <button id="downloadErrorsBtn" class="btn secondary" disabled>Download errors CSV</button>
-          <button id="downloadTemplateBtn" class="btn secondary">Download template CSV</button>
         </div>
 
         <div style="margin-top:18px;">
@@ -83,24 +98,92 @@
   const els = {
     apiSelect: document.getElementById('apiSelect'),
     token: document.getElementById('token'),
-    csvFile: document.getElementById('csvFile'),
+    addRowBtn: document.getElementById('addRowBtn'),
+    clearRowsBtn: document.getElementById('clearRowsBtn'),
+    pasteCsvBtn: document.getElementById('pasteCsvBtn'),
     runBtn: document.getElementById('runBtn'),
     cancelBtn: document.getElementById('cancelBtn'),
     downloadErrorsBtn: document.getElementById('downloadErrorsBtn'),
-    downloadTemplateBtn: document.getElementById('downloadTemplateBtn'),
     bar: document.getElementById('bar'),
     status: document.getElementById('status'),
     log: document.getElementById('log'),
+    sheet: document.getElementById('sheet'),
+    colHint: document.getElementById('colHint'),
   };
 
   const BASE_URL = 'https://webexapis.com';
-  const CONCURRENCY = 4; // fixed
+  const CONCURRENCY = 1; // fixed (sequential for clearer progress)
   const ACTIONS = {
-    create_workspaces_ext:   { endpoint: '/v1/workspaces', method: 'POST', label: 'Create Workspaces Using Extension' },
-    create_workspaces_phone: { endpoint: '/v1/workspaces', method: 'POST', label: 'Create Workspaces Using Phone Number' },
-    create_workspaces_both:  { endpoint: '/v1/workspaces', method: 'POST', label: 'Create Workspaces Using Phone Number and Extension' },
+    create_workspaces_ext:   { endpoint: '/v1/workspaces', method: 'POST', label: 'Create Workspaces Using Extension', cols: ['displayName','locationId','capacity','type','callingType','licenseId','extension'] },
+    create_workspaces_phone: { endpoint: '/v1/workspaces', method: 'POST', label: 'Create Workspaces Using Phone Number', cols: ['displayName','locationId','capacity','type','callingType','licenseId','phoneNumber'] },
+    create_workspaces_both:  { endpoint: '/v1/workspaces', method: 'POST', label: 'Create Workspaces Using Phone Number and Extension', cols: ['displayName','locationId','capacity','type','callingType','licenseId','phoneNumber','extension'] },
   };
 
+  let rows = [];
+
+  function log(msg, type) {
+    const line = document.createElement('div');
+    if (type === 'error') line.classList.add('danger');
+    if (type === 'warn') line.classList.add('warn');
+    line.textContent = msg;
+    els.log.appendChild(line);
+    els.log.scrollTop = els.log.scrollHeight;
+  }
+
+  function setProgress(done, total) {
+    const pct = total ? Math.round((done/total) * 100) : 0;
+    els.bar.style.width = pct + '%';
+    els.status.textContent = `${done}/${total} (${pct}%)`;
+  }
+
+  // ---- Table rendering ----
+  function renderTable() {
+    const action = ACTIONS[els.apiSelect.value];
+    const cols = action.cols;
+    els.colHint.textContent = `Columns: ${cols.join(', ')}`;
+
+    const thead = `<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}<th>✕</th></tr></thead>`;
+    const tbody = `<tbody>${rows.map((r,ri)=>`<tr>${cols.map(c=>`<td><input data-ri="${ri}" data-key="${c}" value="${r[c]??''}"/></td>`).join('')}<td><button class="btn secondary" data-del="${ri}">Delete</button></td></tr>`).join('')}</tbody>`;
+    els.sheet.innerHTML = thead + tbody;
+
+    // Wire inputs
+    els.sheet.querySelectorAll('input[data-ri]').forEach(inp=>{
+      inp.addEventListener('input', (e)=>{
+        const ri = Number(e.target.getAttribute('data-ri'));
+        const key = e.target.getAttribute('data-key');
+        rows[ri][key] = e.target.value;
+      });
+    });
+    els.sheet.querySelectorAll('button[data-del]').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        const ri = Number(e.target.getAttribute('data-del'));
+        rows.splice(ri,1);
+        renderTable();
+      });
+    });
+  }
+
+  function addRow() {
+    const cols = ACTIONS[els.apiSelect.value].cols;
+    const obj = {}; cols.forEach(c=>obj[c]='');
+    rows.push(obj); renderTable();
+  }
+  function clearRows() { rows = []; renderTable(); }
+
+  function pasteCsv() {
+    const cols = ACTIONS[els.apiSelect.value].cols;
+    const txt = prompt(`Paste CSV text with headers: ${cols.join(', ')}`);
+    if (!txt) return;
+    const parsed = Papa.parse(txt, { header: true, skipEmptyLines: true });
+    const incoming = parsed.data.map(d=>{
+      const obj = {}; cols.forEach(c=> obj[c] = d[c] ?? '');
+      return obj;
+    });
+    rows = rows.concat(incoming);
+    renderTable();
+  }
+
+  // Build body for each action from a row
   function buildBody(actionKey, row) {
     const n = (v) => (v === '' || v === undefined || v === null) ? undefined : Number(v);
     const s = (v) => (v === undefined || v === null) ? undefined : String(v);
@@ -156,39 +239,14 @@
     return prune(base);
   }
 
-  function log(msg, type) {
-    const line = document.createElement('div');
-    if (type === 'error') line.classList.add('danger');
-    if (type === 'warn') line.classList.add('warn');
-    line.textContent = msg;
-    els.log.appendChild(line);
-    els.log.scrollTop = els.log.scrollHeight;
-  }
-
-  function setProgress(done, total) {
-    const pct = total ? Math.round((done/total) * 100) : 0;
-    els.bar.style.width = pct + '%';
-    els.status.textContent = `${done}/${total} (${pct}%)`;
-  }
-
-  function downloadCSV(rows, name = 'errors.csv') {
-    if (!rows.length) return;
-    const headers = Array.from(new Set(rows.flatMap(r => Object.keys(r))));
-    const csv = [headers.join(',')].concat(rows.map(r => headers.map(h => JSON.stringify(r[h] ?? '').replace(/^\"|\"$/g,'')).join(','))).join('\n');
+  function downloadCSV(rowsArr, name = 'errors.csv') {
+    if (!rowsArr.length) return;
+    const headers = Array.from(new Set(rowsArr.flatMap(r => Object.keys(r))));
+    const csv = [headers.join(',')].concat(rowsArr.map(r => headers.map(h => JSON.stringify(r[h] ?? '').replace(/^\"|\"$/g,'')).join(','))).join('\n');
     const blob = new Blob([csv], {type:'text/csv'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = name;
-    a.click();
-  }
-
-  function downloadTemplate() {
-    const headers = ['displayName','locationId','capacity','type','callingType','licenseId','extension','phoneNumber'];
-    const csv = headers.join(',') + '\n';
-    const blob = new Blob([csv], {type:'text/csv'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'webex-workspaces-template.csv';
     a.click();
   }
 
@@ -200,7 +258,16 @@
       opt.value = key; opt.textContent = cfg.label; sel.appendChild(opt);
     });
     sel.value = 'create_workspaces_ext';
+    sel.addEventListener('change', ()=>{ rows = []; addRow(); });
   })();
+
+  // initial empty rows
+  addRow(); addRow(); addRow();
+
+  // paste/row actions
+  els.addRowBtn.addEventListener('click', addRow);
+  els.clearRowsBtn.addEventListener('click', clearRows);
+  els.pasteCsvBtn.addEventListener('click', pasteCsv);
 
   async function sendRow({row, idx, cfg}) {
     const { endpoint, method, token, actionKey } = cfg;
@@ -215,71 +282,50 @@
     return text;
   }
 
+  function getRowsFromTable() {
+    return rows.map(r=>({ ...r }));
+  }
+
   async function run() {
     let errors = [];
-    els.runBtn.disabled = true;
-    els.cancelBtn.disabled = false;
-    els.downloadErrorsBtn.disabled = true;
-    els.log.textContent = '';
-    setProgress(0, 0);
+    els.runBtn.disabled = true; els.cancelBtn.disabled = false; els.downloadErrorsBtn.disabled = true;
+    els.log.textContent = ''; setProgress(0, 0);
 
     try {
       const actionKey = els.apiSelect.value;
       const action = ACTIONS[actionKey];
       const token = els.token.value.trim();
-      const file = els.csvFile.files?.[0];
-      if (!file) throw new Error('Please select a CSV file.');
+      if (!token) throw new Error('Bearer token required.');
 
-      const rows = await new Promise((resolve, reject) => {
-        Papa.parse(file, {
-          header: true,
-          skipEmptyLines: true,
-          complete: (results) => resolve(results.data),
-          error: (err) => reject(err),
-        });
-      });
+      const data = getRowsFromTable();
+      if (!data.length) throw new Error('No rows to process.');
 
-      const total = rows.length;
-      log(`Parsed ${total} rows.`);
-      setProgress(0, total);
+      const total = data.length; setProgress(0, total); log(`Loaded ${total} row(s).`);
 
-      // Fixed-width worker pool
       let done = 0;
-      const queue = rows.map((row, idx) => ({row, idx}));
+      const queue = data.map((row, idx) => ({row, idx}));
       async function worker() {
         while (queue.length) {
-          const item = queue.shift();
-          if (!item) break;
+          const item = queue.shift(); if (!item) break;
           try {
             await sendRow({ row: item.row, idx: item.idx, cfg: { ...action, token, actionKey } });
             log(`Row ${item.idx+1}: ✓ success`);
           } catch (e) {
             log(`Row ${item.idx+1}: ✗ ${e.message}`, 'error');
             errors.push({ row: item.idx+1, error: e.message, ...item.row });
-          } finally {
-            done++; setProgress(done, total);
-          }
+          } finally { done++; setProgress(done, total); }
         }
       }
       await Promise.all(Array.from({length: CONCURRENCY}, worker));
 
-      if (errors.length) {
-        log(`Finished with ${errors.length} error(s).`, 'error');
-        els.downloadErrorsBtn.disabled = false;
-        els.downloadErrorsBtn.onclick = () => downloadCSV(errors);
-      } else {
-        log('All done successfully.');
-      }
+      if (errors.length) { log(`Finished with ${errors.length} error(s).`, 'error'); els.downloadErrorsBtn.disabled = false; els.downloadErrorsBtn.onclick = ()=>downloadCSV(errors); }
+      else { log('All done successfully.'); }
     } catch (e) {
       log(String(e.message || e), 'error');
-    } finally {
-      els.runBtn.disabled = false;
-      els.cancelBtn.disabled = true;
-    }
+    } finally { els.runBtn.disabled = false; els.cancelBtn.disabled = true; }
   }
 
   els.runBtn.addEventListener('click', run);
-  els.downloadTemplateBtn.addEventListener('click', downloadTemplate);
 })();
 </script>
 </body>
