@@ -9,8 +9,10 @@
     :root { --bg:#0b1020; --card:#131a2a; --muted:#92a0b8; --fg:#e9edf5; --accent:#7dd3fc; --warn:#fbbf24; --err:#f87171; }
     body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, "Apple Color Emoji","Segoe UI Emoji"; background:linear-gradient(180deg,#0b1020,#0a132a); color:var(--fg); }
     .wrap { max-width:1100px; margin:0 auto; padding:32px 20px 80px; }
+    .header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
     .title { font-size:clamp(24px,3vw,38px); font-weight:800; letter-spacing:.2px; }
     .sub { color:var(--muted); }
+    .logo { height:40px; }
     .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; }
     .card { background:var(--card); border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
     label { display:block; font-size:12px; color:var(--muted); margin:6px 0 6px; }
@@ -21,54 +23,30 @@
     .btn.secondary { background:#0e1525; color:var(--fg); border:1px solid rgba(255,255,255,.1); }
     .btn:disabled { opacity:.6; cursor:not-allowed; }
     .hint { font-size:12px; color:var(--muted); }
-    .pill { display:inline-flex; gap:8px; align-items:center; border-radius:999px; padding:8px 10px; background:#0e1525; border:1px solid rgba(255,255,255,.08); }
     .progress { height:10px; background:#0e1525; border:1px solid rgba(255,255,255,.08); border-radius:999px; overflow:hidden; }
     .bar { height:100%; background:linear-gradient(90deg,#22d3ee,#3b82f6); width:0%; transition:width .25s ease; }
     .log { height:240px; overflow:auto; background:#0e1525; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px; font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; font-size:12px; white-space:pre-wrap; }
     .danger { color:var(--err); }
     .warn { color:var(--warn); }
-    a { color:var(--accent); }
-    .inline { display:inline-block; min-width: 120px; }
   </style>
-  <!-- PapaParse for robust CSV parsing -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
   <div class="wrap">
-    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;">
+    <div class="header">
       <div>
         <div class="title">CSV → Webex API Runner</div>
         <div class="sub">Upload a CSV, pick an action, and we’ll call <code>https://webexapis.com</code> with your Bearer token.</div>
       </div>
-      <div class="pill">
-        <span>Client‑side app · Host on GitHub Pages</span>
-      </div>
+      <img src="CX%20Advanced%20Solutions_Smaller_white.png" alt="Logo" class="logo" />
     </div>
 
-    <div class="grid" style="margin-top:18px;">
+    <div class="grid">
       <div class="card">
         <label>API Action</label>
         <select id="apiSelect">
           <option value="create_workspaces" selected>Create Workspaces</option>
         </select>
-        <div class="row">
-          <div style="flex:1;">
-            <label>Resolved Base URL</label>
-            <input id="baseUrlDisplay" value="https://webexapis.com" disabled />
-          </div>
-          <div style="flex:1;">
-            <label>Endpoint path</label>
-            <input id="endpoint" value="/v1/workspaces" />
-          </div>
-          <div style="width:140px;">
-            <label>Method</label>
-            <select id="method">
-              <option selected>POST</option>
-              <option>PUT</option>
-              <option>PATCH</option>
-            </select>
-          </div>
-        </div>
 
         <label>Bearer Token</label>
         <input id="token" type="password" placeholder="Paste your Bearer token" autocomplete="off" />
@@ -88,7 +66,7 @@
         <div class="row" style="margin-top:10px;">
           <label class="row" style="gap:8px;align-items:center;">
             <input id="dryRun" type="checkbox" checked>
-            <span>Dry‑run (parse & validate only)</span>
+            <span>Dry-run (parse & validate only)</span>
           </label>
           <label class="row" style="gap:8px;align-items:center;">
             <input id="stopOnError" type="checkbox">
@@ -109,31 +87,9 @@
       </div>
 
       <div class="card">
-        <label>Request payload mapping (optional JS)</label>
-        <textarea id="mapper" rows="14" spellcheck="false">// row is an object of {columnName: value}
-// Return the JSON body you want to send for each row
-// For Webex Create Workspaces, see API docs for fields like: displayName, capacity, type, floorId, etc.
-function mapRow(row) {
-  // Example mapping for workspaces. Tweak to your CSV headers.
-  // return {
-  //   displayName: row["DisplayName"],
-  //   capacity: row["Capacity"] ? Number(row["Capacity"]) : undefined,
-  //   type: row["Type"],
-  //   notes: row["Notes"],
-  // };
-  return row; // default: send the row as-is
-}
-        </textarea>
-        <div class="hint">Edit the function above to reshape CSV → JSON as your endpoint expects.</div>
-
-        <label style="margin-top:12px;">Console</label>
+        <label>Console</label>
         <div id="log" class="log" aria-live="polite"></div>
       </div>
-    </div>
-
-    <div class="card" style="margin-top:14px;">
-      <b>Note</b>
-      <div class="hint">You must have a Bearer Token from a local Admin to the Tenant to use this tool</div>
     </div>
   </div>
 
@@ -141,9 +97,6 @@ function mapRow(row) {
 (function() {
   const els = {
     apiSelect: document.getElementById('apiSelect'),
-    baseUrlDisplay: document.getElementById('baseUrlDisplay'),
-    endpoint: document.getElementById('endpoint'),
-    method: document.getElementById('method'),
     token: document.getElementById('token'),
     csvFile: document.getElementById('csvFile'),
     concurrency: document.getElementById('concurrency'),
@@ -152,28 +105,13 @@ function mapRow(row) {
     runBtn: document.getElementById('runBtn'),
     cancelBtn: document.getElementById('cancelBtn'),
     downloadErrorsBtn: document.getElementById('downloadErrorsBtn'),
-    mapper: document.getElementById('mapper'),
     bar: document.getElementById('bar'),
     status: document.getElementById('status'),
     log: document.getElementById('log'),
   };
 
   const BASE_URL = 'https://webexapis.com';
-
-  // Map actions → endpoint & method presets
-  const ACTIONS = {
-    create_workspaces: { endpoint: '/v1/workspaces', method: 'POST' },
-  };
-
-  function applyAction(actionKey) {
-    const a = ACTIONS[actionKey];
-    if (!a) return;
-    els.endpoint.value = a.endpoint;
-    els.method.value = a.method;
-  }
-
-  els.apiSelect.addEventListener('change', (e) => applyAction(e.target.value));
-  applyAction(els.apiSelect.value);
+  const ACTIONS = { create_workspaces: { endpoint: '/v1/workspaces', method: 'POST' } };
 
   function log(msg, type) {
     const line = document.createElement('div');
@@ -201,62 +139,20 @@ function mapRow(row) {
     a.click();
   }
 
-  function compileMapper(fnText) {
-    try {
-      // eslint-disable-next-line no-new-func
-      const fn = new Function(fnText + '\n; return mapRow;')();
-      if (typeof fn !== 'function') throw new Error('mapRow is not a function');
-      return fn;
-    } catch (e) {
-      throw new Error('Mapper error: ' + e.message);
-    }
-  }
+  async function sendRow({row, idx, cfg}) {
+    const { endpoint, method, token } = cfg;
+    const url = BASE_URL + endpoint;
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+    const body = JSON.stringify(row);
 
-  async function sendRow({row, idx, cfg, mapRow}) {
-    const url = BASE_URL.replace(/\/$/,'') + '/' + cfg.endpoint.replace(/^\//,'');
-    const body = JSON.stringify(mapRow(row));
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${cfg.token}`,
-    };
-
-    const maxRetries = 4;
-    const baseDelay = 500; // ms
-
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      if (cfg.abortFlag) throw new Error('Cancelled');
-      try {
-        const res = await fetch(url, {
-          method: cfg.method,
-          headers,
-          body,
-        });
-        const isJSON = res.headers.get('content-type')?.includes('application/json');
-        const text = await res.text();
-        const data = isJSON ? (JSON.parse(text || '{}')) : text;
-        if (!res.ok) {
-          const err = new Error(`HTTP ${res.status} ${res.statusText}`);
-          err.response = { status: res.status, body: data };
-          throw err;
-        }
-        return { ok: true, data };
-      } catch (e) {
-        const status = e?.response?.status || 0;
-        const retriable = status === 0 || status >= 500 || status === 429;
-        if (attempt < maxRetries && retriable) {
-          const delay = baseDelay * Math.pow(2, attempt) + Math.random()*200;
-          log(`Row ${idx+1}: retrying after ${Math.round(delay)}ms due to ${e.message || e}`, 'warn');
-          await new Promise(r => setTimeout(r, delay));
-          continue;
-        }
-        throw e;
-      }
-    }
+    const res = await fetch(url, { method, headers, body });
+    const text = await res.text();
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
+    return text;
   }
 
   async function run() {
     let errors = [];
-    let abortFlag = false;
     els.runBtn.disabled = true;
     els.cancelBtn.disabled = false;
     els.downloadErrorsBtn.disabled = true;
@@ -264,22 +160,11 @@ function mapRow(row) {
     setProgress(0, 0);
 
     try {
-      const cfg = {
-        endpoint: els.endpoint.value.trim(),
-        method: els.method.value,
-        token: els.token.value.trim(),
-        concurrency: Math.max(1, Math.min(16, parseInt(els.concurrency.value || '4',10))),
-        dryRun: els.dryRun.checked,
-        stopOnError: els.stopOnError.checked,
-        abortFlag,
-      };
-
-      if (!cfg.endpoint) throw new Error('Endpoint is required.');
-      if (!cfg.dryRun && !cfg.token) throw new Error('Bearer token is required when not in dry‑run.');
+      const action = ACTIONS[els.apiSelect.value];
+      const token = els.token.value.trim();
+      if (!token && !els.dryRun.checked) throw new Error('Bearer token required.');
       const file = els.csvFile.files?.[0];
       if (!file) throw new Error('Please select a CSV file.');
-
-      const mapRow = compileMapper(els.mapper.value);
 
       const rows = await new Promise((resolve, reject) => {
         Papa.parse(file, {
@@ -291,13 +176,11 @@ function mapRow(row) {
       });
 
       const total = rows.length;
-      if (!total) throw new Error('Your CSV appears to be empty.');
       log(`Parsed ${total} rows.`);
       setProgress(0, total);
 
-      if (cfg.dryRun) {
-        try { mapRow(rows[0]); } catch(e) { throw new Error('Test mapping failed: ' + e.message); }
-        log('Dry‑run mode: no network calls will be made. Disable Dry‑run to send requests.', 'warn');
+      if (els.dryRun.checked) {
+        log('Dry-run only; no network calls made.', 'warn');
         setProgress(total, total);
         els.runBtn.disabled = false;
         els.cancelBtn.disabled = true;
@@ -305,38 +188,23 @@ function mapRow(row) {
       }
 
       let done = 0;
-      const queue = rows.map((row, idx) => ({row, idx}));
-
-      async function worker(id) {
-        while(queue.length && !abortFlag) {
-          const item = queue.shift();
-          if (!item) break;
-          try {
-            const res = await sendRow({ ...item, cfg, mapRow });
-            log(`Row ${item.idx+1}: ✓ success`);
-          } catch (e) {
-            const status = e?.response?.status || '';
-            const body = e?.response?.body;
-            const msg = `Row ${item.idx+1}: ✗ error ${e.message}`;
-            log(msg, 'error');
-            errors.push({ row_number: item.idx+1, error: e.message, status, body: typeof body === 'string' ? body : JSON.stringify(body), ...item.row });
-            if (cfg.stopOnError) { abortFlag = true; break; }
-          } finally {
-            done++; setProgress(done, total);
-          }
+      for (let i = 0; i < rows.length; i++) {
+        try {
+          await sendRow({ row: rows[i], idx: i, cfg: { ...action, token } });
+          log(`Row ${i+1}: ✓ success`);
+        } catch (e) {
+          log(`Row ${i+1}: ✗ ${e.message}`, 'error');
+          errors.push({ row: i+1, error: e.message, ...rows[i] });
         }
+        done++; setProgress(done, total);
       }
 
-      const workers = Array.from({length: cfg.concurrency}, (_, i) => worker(i));
-      await Promise.all(workers);
-
-      if (abortFlag) log('Run cancelled.', 'warn');
       if (errors.length) {
         log(`Finished with ${errors.length} error(s).`, 'error');
         els.downloadErrorsBtn.disabled = false;
         els.downloadErrorsBtn.onclick = () => downloadCSV(errors);
       } else {
-        log('All done with no errors.');
+        log('All done successfully.');
       }
     } catch (e) {
       log(String(e.message || e), 'error');
@@ -347,7 +215,6 @@ function mapRow(row) {
   }
 
   els.runBtn.addEventListener('click', run);
-  els.cancelBtn.addEventListener('click', () => { /* simple cancel toggler */ });
 })();
 </script>
 </body>
