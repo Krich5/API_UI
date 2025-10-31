@@ -66,7 +66,7 @@
         <div class="row" style="margin-top:12px;">
           <label class="row" style="gap:8px;align-items:center;">
             <input id="dryRun" type="checkbox" checked>
-            <span>Dry-run (parse & validate only)</span>
+            <span>Dry‑run (parse & validate only)</span>
           </label>
           <label class="row" style="gap:8px;align-items:center;">
             <input id="stopOnError" type="checkbox">
@@ -111,7 +111,70 @@
   };
 
   const BASE_URL = 'https://webexapis.com';
-  const ACTIONS = { create_workspaces: { endpoint: '/v1/workspaces', method: 'POST' } };
+  const ACTIONS = {
+    create_workspaces_ext:   { endpoint: '/v1/workspaces', method: 'POST', label: 'Create Workspaces Using Extension' },
+    create_workspaces_phone: { endpoint: '/v1/workspaces', method: 'POST', label: 'Create Workspaces Using Phone Number' },
+    create_workspaces_both:  { endpoint: '/v1/workspaces', method: 'POST', label: 'Create Workspaces Using Phone Number and Extension' },
+  };
+
+  // Build body for each action from CSV row
+  function buildBody(actionKey, row) {
+    // Helpers
+    const n = (v) => (v === '' || v === undefined || v === null) ? undefined : Number(v);
+    const s = (v) => (v === undefined || v === null) ? undefined : String(v);
+    const listLicenses = (v) => {
+      if (v == null) return [];
+      const str = String(v).trim();
+      if (!str) return [];
+      // allow comma/semicolon separated lists; otherwise single id
+      return str.split(/[,;]/).map(x => x.trim()).filter(Boolean);
+    };
+    const phone = (v) => {
+      if (!v) return undefined;
+      const t = String(v).trim();
+      if (!t) return undefined;
+      return t.startsWith('+') ? t : `+1${t}`; // per spec prepend +1
+    };
+
+    const base = {
+      displayName: s(row['displayName']),
+      locationId: s(row['locationId']),
+      capacity: n(row['capacity']),
+      type: s(row['type']),
+      calling: {
+        type: s(row['callingType']),
+        webexCalling: {
+          locationId: s(row['locationId']),
+          licenses: listLicenses(row['licenseId']),
+        }
+      }
+    };
+
+    if (actionKey === 'create_workspaces_ext') {
+      base.calling.webexCalling.extension = s(row['extension']);
+    } else if (actionKey === 'create_workspaces_phone') {
+      base.calling.webexCalling.phoneNumber = phone(row['phoneNumber']);
+    } else if (actionKey === 'create_workspaces_both') {
+      base.calling.webexCalling.phoneNumber = phone(row['phoneNumber']);
+      base.calling.webexCalling.extension = s(row['extension']);
+    }
+
+    // Remove undefined keys recursively
+    function prune(obj) {
+      if (Array.isArray(obj)) return obj.filter(v => v !== undefined && v !== null);
+      const out = {}; Object.keys(obj).forEach(k => {
+        const v = obj[k];
+        if (v && typeof v === 'object' && !Array.isArray(v)) {
+          const p = prune(v);
+          if (Object.keys(p).length) out[k] = p;
+        } else if (v !== undefined) {
+          out[k] = v;
+        }
+      });
+      return out;
+    }
+    return prune(base);
+  }
 
   function log(msg, type) {
     const line = document.createElement('div');
@@ -140,16 +203,28 @@
   }
 
   async function sendRow({row, idx, cfg}) {
-    const { endpoint, method, token } = cfg;
+    const { endpoint, method, token, actionKey } = cfg;
     const url = BASE_URL + endpoint;
     const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
-    const body = JSON.stringify(row);
+    const bodyObj = buildBody(actionKey, row);
+    const body = JSON.stringify(bodyObj);
 
     const res = await fetch(url, { method, headers, body });
     const text = await res.text();
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
     return text;
   }
+
+  // Populate dropdown labels
+  (function initSelect(){
+    const sel = els.apiSelect;
+    sel.innerHTML = '';
+    Object.entries(ACTIONS).forEach(([key, cfg]) => {
+      const opt = document.createElement('option');
+      opt.value = key; opt.textContent = cfg.label; sel.appendChild(opt);
+    });
+    sel.value = 'create_workspaces_ext';
+  })();
 
   async function run() {
     let errors = [];
@@ -160,7 +235,8 @@
     setProgress(0, 0);
 
     try {
-      const action = ACTIONS[els.apiSelect.value];
+      const actionKey = els.apiSelect.value;
+      const action = ACTIONS[actionKey];
       const token = els.token.value.trim();
       if (!token && !els.dryRun.checked) throw new Error('Bearer token required.');
       const file = els.csvFile.files?.[0];
@@ -180,6 +256,9 @@
       setProgress(0, total);
 
       if (els.dryRun.checked) {
+        // validate first row build
+        try { JSON.stringify(buildBody(actionKey, rows[0] || {})); }
+        catch (e) { throw new Error('Mapping validation failed: ' + e.message); }
         log('Dry-run only; no network calls made.', 'warn');
         setProgress(total, total);
         els.runBtn.disabled = false;
@@ -190,7 +269,7 @@
       let done = 0;
       for (let i = 0; i < rows.length; i++) {
         try {
-          await sendRow({ row: rows[i], idx: i, cfg: { ...action, token } });
+          await sendRow({ row: rows[i], idx: i, cfg: { ...action, token, actionKey } });
           log(`Row ${i+1}: ✓ success`);
         } catch (e) {
           log(`Row ${i+1}: ✗ ${e.message}`, 'error');
