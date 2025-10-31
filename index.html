@@ -14,6 +14,8 @@
     .title { font-size:clamp(24px,3vw,38px); font-weight:800; letter-spacing:.2px; }
     .sub { color:var(--muted); }
     .logo { height:40px; }
+
+    /* top grid for controls + console */
     .grid { display:grid; grid-template-columns:3fr 1fr; gap:24px; }
     .card { position:relative; background:var(--card); border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.25); overflow:hidden; }
     label { display:block; font-size:13px; color:var(--muted); margin:8px 0 6px; }
@@ -31,8 +33,9 @@
     .danger { color:var(--err); }
     .warn { color:var(--warn); }
 
-    /* Collapsible data section */
-    .collapse { margin-top:18px; border:1px solid rgba(255,255,255,.08); border-radius:14px; background:#0e1525; }
+    /* Full-width data section */
+    .full { margin-top:24px; }
+    .collapse { border:1px solid rgba(255,255,255,.08); border-radius:14px; background:#0e1525; }
     .collapseHead { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; cursor:pointer; user-select:none; }
     .collapseHead .title { font-size:16px; font-weight:700; }
     .chev { transition: transform .2s ease; }
@@ -59,7 +62,7 @@
     <div class="header">
       <div>
         <div class="title">Webex API Tool</div>
-        <div class="sub">Pick an action, edit data inline (optional), or upload CSV — then run. Calls go to <code>https://webexapis.com</code>.</div>
+        <div class="sub">Pick an action, upload CSV at top or use the table below — then run. Calls go to <code>https://webexapis.com</code>.</div>
       </div>
       <img src="CX%20Advanced%20Solutions_Smaller_white.png" alt="Logo" class="logo" />
     </div>
@@ -73,6 +76,12 @@
         <input id="token" type="password" placeholder="Paste your Bearer token" autocomplete="off" />
         <div class="hint">Token is not saved; it lives only while the page is open.</div>
 
+        <!-- Top-level CSV upload so users can choose upload first -->
+        <div class="row" style="margin-top:10px;">
+          <button id="uploadCsvTopBtn" class="btn ghost">Upload CSV</button>
+          <input id="csvFileTop" type="file" accept=".csv" class="hiddenFile" />
+        </div>
+
         <div class="row" style="margin-top:16px;flex-wrap:wrap;">
           <button id="runBtn" class="btn">Run</button>
           <button id="cancelBtn" class="btn secondary" disabled>Cancel</button>
@@ -83,32 +92,32 @@
           <div class="progress"><div id="bar" class="bar"></div></div>
           <div id="status" class="hint" style="margin-top:8px;">Idle</div>
         </div>
-
-        <!-- Collapsible data area moved BELOW run section -->
-        <div id="dataSection" class="collapse">
-          <div id="toggleDataBtn" class="collapseHead">
-            <div class="title">Workspace Data Table</div>
-            <div class="chev">▶</div>
-          </div>
-          <div class="collapseBody">
-            <div class="sheetToolbar">
-              <button id="addRowBtn" class="btn secondary">Add row</button>
-              <button id="clearRowsBtn" class="btn secondary">Clear rows</button>
-              <button id="pasteCsvBtn" class="btn ghost">Paste CSV</button>
-              <button id="uploadCsvBtn" class="btn ghost">Upload CSV</button>
-              <input id="csvFile" type="file" accept=".csv" class="hiddenFile" />
-              <span class="hint" id="colHint"></span>
-            </div>
-            <div class="sheetWrap">
-              <table class="sheet" id="sheet"></table>
-            </div>
-          </div>
-        </div>
       </div>
 
       <div class="card">
         <label>Console</label>
         <div id="log" class="log" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <!-- FULL-WIDTH data section -->
+    <div class="full">
+      <div id="dataSection" class="collapse open">
+        <div id="toggleDataBtn" class="collapseHead">
+          <div class="title">Data Table</div>
+          <div class="chev">▶</div>
+        </div>
+        <div class="collapseBody">
+          <div class="sheetToolbar">
+            <button id="addRowBtn" class="btn secondary">Add row</button>
+            <button id="clearRowsBtn" class="btn secondary">Clear rows</button>
+            <button id="pasteCsvBtn" class="btn ghost">Paste from clipboard</button>
+            <span class="hint" id="colHint"></span>
+          </div>
+          <div class="sheetWrap">
+            <table class="sheet" id="sheet"></table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -118,11 +127,13 @@
   const els = {
     apiSelect: document.getElementById('apiSelect'),
     token: document.getElementById('token'),
+    // top upload
+    uploadCsvTopBtn: document.getElementById('uploadCsvTopBtn'),
+    csvFileTop: document.getElementById('csvFileTop'),
+    // data table controls
     addRowBtn: document.getElementById('addRowBtn'),
     clearRowsBtn: document.getElementById('clearRowsBtn'),
     pasteCsvBtn: document.getElementById('pasteCsvBtn'),
-    uploadCsvBtn: document.getElementById('uploadCsvBtn'),
-    csvFile: document.getElementById('csvFile'),
     runBtn: document.getElementById('runBtn'),
     cancelBtn: document.getElementById('cancelBtn'),
     downloadErrorsBtn: document.getElementById('downloadErrorsBtn'),
@@ -182,7 +193,43 @@
         const key = e.target.getAttribute('data-key');
         rows[ri][key] = e.target.value;
       });
+
+      // Excel-style multi-cell paste
+      inp.addEventListener('paste', (e)=>{
+        const text = e.clipboardData?.getData('text');
+        if (!text || (!text.includes('\t') && !text.includes('\n'))) return; // let normal paste
+        e.preventDefault();
+        const startRi = Number(e.target.getAttribute('data-ri'));
+        const startKey = e.target.getAttribute('data-key');
+        const cols = ACTIONS[els.apiSelect.value].cols;
+        const startCi = cols.indexOf(startKey);
+        // detect delimiter (tab for Excel, comma otherwise)
+        const delim = text.includes('\t') ? '\t' : ',';
+        const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.length>0);
+        const cells = lines.map(l=> l.split(new RegExp(delim)).map(x=>x.trim()));
+        // If first row seems like headers matching our cols, map by header
+        const header = cells[0];
+        const headerMatches = header.every(h => cols.includes(h));
+        if (headerMatches) {
+          const map = header.map(h => cols.indexOf(h));
+          for (let r = 1; r < cells.length; r++) {
+            const rowIdx = startRi + r - 1;
+            if (!rows[rowIdx]) { const obj = {}; cols.forEach(c=>obj[c]=''); rows[rowIdx]=obj; }
+            map.forEach((ci, i)=>{ if (ci>=0) rows[rowIdx][cols[ci]] = cells[r][i] ?? ''; });
+          }
+        } else {
+          // paste into grid starting at selected cell
+          for (let r = 0; r < cells.length; r++) {
+            const rowIdx = startRi + r; if (!rows[rowIdx]) { const obj = {}; cols.forEach(c=>obj[c]=''); rows[rowIdx]=obj; }
+            for (let c = 0; c < cells[r].length; c++) {
+              const colIdx = startCi + c; if (colIdx < cols.length) rows[rowIdx][cols[colIdx]] = cells[r][c] ?? '';
+            }
+          }
+        }
+        renderTable();
+      });
     });
+
     els.sheet.querySelectorAll('button[data-del]').forEach(btn=>{
       btn.addEventListener('click', (e)=>{
         const ri = Number(e.target.getAttribute('data-del'));
@@ -191,21 +238,10 @@
     });
   }
 
-  function addRow() {
-    const cols = ACTIONS[els.apiSelect.value].cols; const obj = {}; cols.forEach(c=>obj[c]=''); rows.push(obj); renderTable();
-  }
+  function addRow() { const cols = ACTIONS[els.apiSelect.value].cols; const obj = {}; cols.forEach(c=>obj[c]=''); rows.push(obj); renderTable(); }
   function clearRows() { rows = []; renderTable(); }
 
-  function pasteCsv() {
-    const cols = ACTIONS[els.apiSelect.value].cols;
-    const txt = prompt(`Paste CSV text with headers: ${cols.join(', ')}`);
-    if (!txt) return;
-    const parsed = Papa.parse(txt, { header: true, skipEmptyLines: true });
-    const incoming = parsed.data.map(d=>{ const obj = {}; cols.forEach(c=> obj[c] = d[c] ?? ''); return obj; });
-    rows = rows.concat(incoming); renderTable();
-  }
-
-  function handleUploadCsv(file) {
+  function handleUpload(file) {
     if (!file) return;
     const cols = ACTIONS[els.apiSelect.value].cols;
     Papa.parse(file, {
@@ -214,6 +250,7 @@
         const incoming = res.data.map(d=>{ const obj = {}; cols.forEach(c=> obj[c] = d[c] ?? ''); return obj; });
         rows = rows.concat(incoming); renderTable();
         log(`Uploaded ${incoming.length} row(s) from CSV.`);
+        if (!els.dataSection.classList.contains('open')) els.dataSection.classList.add('open');
       },
       error: (err)=> log('CSV parse error: ' + err.message, 'error')
     });
@@ -225,14 +262,11 @@
     const s = (v) => (v === undefined || v === null) ? undefined : String(v);
     const listLicenses = (v) => {
       if (v == null) return [];
-      const str = String(v).trim();
-      if (!str) return [];
+      const str = String(v).trim(); if (!str) return [];
       return str.split(/[,;]/).map(x => x.trim()).filter(Boolean);
     };
     const phone = (v) => {
-      if (!v) return undefined;
-      const t = String(v).trim();
-      if (!t) return undefined;
+      if (!v) return undefined; const t = String(v).trim(); if (!t) return undefined;
       return t.startsWith('+') ? t : `+1${t}`;
     };
 
@@ -244,29 +278,21 @@
       calling: { type: s(row['callingType']), webexCalling: { locationId: s(row['locationId']), licenses: listLicenses(row['licenseId']) } }
     };
 
-    if (actionKey === 'create_workspaces_ext') {
-      base.calling.webexCalling.extension = s(row['extension']);
-    } else if (actionKey === 'create_workspaces_phone') {
-      base.calling.webexCalling.phoneNumber = phone(row['phoneNumber']);
-    } else if (actionKey === 'create_workspaces_both') {
-      base.calling.webexCalling.phoneNumber = phone(row['phoneNumber']);
-      base.calling.webexCalling.extension = s(row['extension']);
-    }
+    if (actionKey === 'create_workspaces_ext') base.calling.webexCalling.extension = s(row['extension']);
+    else if (actionKey === 'create_workspaces_phone') base.calling.webexCalling.phoneNumber = phone(row['phoneNumber']);
+    else if (actionKey === 'create_workspaces_both') { base.calling.webexCalling.phoneNumber = phone(row['phoneNumber']); base.calling.webexCalling.extension = s(row['extension']); }
 
     function prune(obj) {
       if (Array.isArray(obj)) return obj.filter(v => v !== undefined && v !== null);
-      const out = {}; Object.keys(obj).forEach(k => { const v = obj[k]; if (v && typeof v === 'object' && !Array.isArray(v)) { const p = prune(v); if (Object.keys(p).length) out[k] = p; } else if (v !== undefined) { out[k] = v; } });
-      return out;
+      const out = {}; Object.keys(obj).forEach(k => { const v = obj[k]; if (v && typeof v === 'object' && !Array.isArray(v)) { const p = prune(v); if (Object.keys(p).length) out[k] = p; } else if (v !== undefined) { out[k] = v; } }); return out;
     }
     return prune(base);
   }
 
   function downloadCSV(rowsArr, name = 'errors.csv') {
-    if (!rowsArr.length) return;
-    const headers = Array.from(new Set(rowsArr.flatMap(r => Object.keys(r))));
+    if (!rowsArr.length) return; const headers = Array.from(new Set(rowsArr.flatMap(r => Object.keys(r))));
     const csv = [headers.join(',')].concat(rowsArr.map(r => headers.map(h => JSON.stringify(r[h] ?? '').replace(/^\"|\"$/g,'')).join(','))).join('\n');
-    const blob = new Blob([csv], {type:'text/csv'});
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+    const blob = new Blob([csv], {type:'text/csv'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
   }
 
   (function initSelect(){
@@ -278,31 +304,43 @@
   // initial empty rows
   addRow(); addRow(); addRow();
 
-  // toolbar
-  els.addRowBtn?.addEventListener('click', addRow);
-  els.clearRowsBtn?.addEventListener('click', clearRows);
-  els.pasteCsvBtn?.addEventListener('click', pasteCsv);
-  els.uploadCsvBtn?.addEventListener('click', ()=> els.csvFile.click());
-  els.csvFile?.addEventListener('change', (e)=> handleUploadCsv(e.target.files[0]));
+  // toolbar handlers
+  els.addRowBtn.addEventListener('click', addRow);
+  els.clearRowsBtn.addEventListener('click', clearRows);
+  els.pasteCsvBtn.addEventListener('click', ()=>{
+    navigator.clipboard.readText().then(txt=>{
+      if (!txt) return; const cols = ACTIONS[els.apiSelect.value].cols;
+      // try with header first
+      const delim = txt.includes('\t') ? '\t' : ',';
+      const lines = txt.replace(/\r/g,'').split('\n').filter(l=>l.length>0);
+      const cells = lines.map(l=> l.split(new RegExp(delim)).map(x=>x.trim()));
+      const header = cells[0]; const headerMatches = header.every(h => cols.includes(h));
+      if (headerMatches) {
+        const map = header.map(h => cols.indexOf(h));
+        for (let r = 1; r < cells.length; r++) { const obj = {}; cols.forEach(c=>obj[c]=''); map.forEach((ci,i)=>{ if (ci>=0) obj[cols[ci]] = cells[r][i] ?? ''; }); rows.push(obj); }
+      } else {
+        for (let r = 0; r < cells.length; r++) { const obj = {}; cols.forEach((c,i)=> obj[c] = cells[r][i] ?? ''); rows.push(obj); }
+      }
+      renderTable(); if (!els.dataSection.classList.contains('open')) els.dataSection.classList.add('open');
+    });
+  });
+
+  // top upload
+  els.uploadCsvTopBtn.addEventListener('click', ()=> els.csvFileTop.click());
+  els.csvFileTop.addEventListener('change', (e)=> handleUpload(e.target.files[0]));
 
   async function sendRow({row, idx, cfg}) {
-    const { endpoint, method, token, actionKey } = cfg;
-    const url = BASE_URL + endpoint;
+    const { endpoint, method, token, actionKey } = cfg; const url = BASE_URL + endpoint;
     const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
-    const bodyObj = buildBody(actionKey, row);
-    const body = JSON.stringify(bodyObj);
-
-    const res = await fetch(url, { method, headers, body });
-    const text = await res.text();
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
-    return text;
+    const bodyObj = buildBody(actionKey, row); const body = JSON.stringify(bodyObj);
+    const res = await fetch(url, { method, headers, body }); const text = await res.text();
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`); return text;
   }
 
   function getRowsFromTable() { return rows.map(r=>({ ...r })); }
 
   async function run() {
-    let errors = [];
-    els.runBtn.disabled = true; els.cancelBtn.disabled = false; els.downloadErrorsBtn.disabled = true;
+    let errors = []; els.runBtn.disabled = true; els.cancelBtn.disabled = false; els.downloadErrorsBtn.disabled = true;
     els.log.textContent = ''; setProgress(0, 0);
 
     try {
@@ -321,7 +359,7 @@
           finally { done++; setProgress(done, total); }
         }
       }
-      await Promise.all(Array.from({length: CONCURRENCY}, worker));
+      await Promise.all(Array.from({length: 1}, worker));
 
       if (errors.length) { log(`Finished with ${errors.length} error(s).`, 'error'); els.downloadErrorsBtn.disabled = false; els.downloadErrorsBtn.onclick = ()=>downloadCSV(errors); }
       else { log('All done successfully.'); }
@@ -330,6 +368,8 @@
   }
 
   els.runBtn.addEventListener('click', run);
+  // first render
+  renderTable();
 })();
 </script>
 </body>
