@@ -15,14 +15,12 @@
     .sub { color:var(--muted); }
     .logo { height:40px; }
 
-    /* layout */
     .grid { display:grid; grid-template-columns:3fr 1fr; gap:24px; }
-    .card { background:var(--card); border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.25); overflow:hidden; }
-    h2 { margin:0 0 10px; font-size:18px; letter-spacing:.3px; }
+    .card { position:relative; background:var(--card); border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.25); overflow:hidden; }
     label { display:block; font-size:13px; color:var(--muted); margin:8px 0 6px; }
     input, select { width:100%; border-radius:12px; border:1px solid rgba(255,255,255,.08); background:#0e1525; color:var(--fg); padding:10px 12px; outline:none; font-size:14px; }
     select { cursor:pointer; }
-    .row { display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap; }
+    .row { display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
     .btn { background:linear-gradient(135deg,#22d3ee,#3b82f6); border:none; color:#06111d; font-weight:700; padding:10px 18px; border-radius:12px; cursor:pointer; }
     .btn.secondary { background:#0e1525; color:var(--fg); border:1px solid rgba(255,255,255,.1); }
     .btn.ghost { background:transparent; border:1px dashed rgba(255,255,255,.2); color:var(--fg); }
@@ -32,11 +30,16 @@
     .bar { height:100%; background:linear-gradient(90deg,#22d3ee,#3b82f6); width:0%; transition:width .25s ease; }
     .log { height:420px; overflow:auto; background:#0e1525; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:12px; font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; font-size:13px; white-space:pre-wrap; }
 
-    /* full-width data table section */
+    /* Full-width data section */
     .full { margin-top:24px; }
+    .collapse { border:1px solid rgba(255,255,255,.08); border-radius:14px; background:#0e1525; }
+    .collapseBody { display:none; padding:12px 14px 16px; }
+    .collapse.open .collapseBody { display:block; }
+
+    /* Editable table */
     .sheetToolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
     .sheetToolbar .hint { margin-left:auto; }
-    .sheetWrap { border:1px solid rgba(255,255,255,.08); border-radius:12px; overflow:auto; background:#0e1525; }
+    .sheetWrap { border:1px solid rgba(255,255,255,.08); border-radius:12px; overflow:auto; }
     table.sheet { width:100%; border-collapse:separate; border-spacing:0; min-width:900px; }
     table.sheet th, table.sheet td { padding:6px 10px; border-bottom:1px solid rgba(255,255,255,.08); border-right:1px solid rgba(255,255,255,.06); }
     table.sheet th { position:sticky; top:0; background:#0f172a; text-align:left; font-weight:700; color:#cbd5e1; z-index:1; font-size:12px; }
@@ -44,7 +47,6 @@
     table.sheet th:last-child, table.sheet td:last-child { border-right:none; }
     table.sheet td input { width:100%; background:transparent; border:none; color:var(--fg); outline:none; padding:0; height:28px; line-height:1.2; font-size:13px; }
     .hiddenFile { display:none; }
-    .pill { font-size:12px; padding:2px 8px; border-radius:999px; background:#0e1525; border:1px solid rgba(255,255,255,.08); }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
@@ -53,142 +55,59 @@
     <div class="header">
       <div>
         <div class="title">Webex API Tool</div>
-        <div class="sub">Build one workspace first, then go bulk. Calls go to <code>https://webexapis.com</code>.</div>
+        <div class="sub">Choose an action. Either **upload a CSV** or **edit in an on‑screen table**, then Run.</div>
       </div>
       <img src="CX%20Advanced%20Solutions_Smaller_white.png" alt="Logo" class="logo" />
     </div>
 
     <div class="grid">
       <div class="card">
-        <h2>1) Authentication</h2>
+        <label>API Action</label>
+        <select id="apiSelect"></select>
+
         <label>Bearer Token</label>
         <input id="token" type="password" placeholder="Paste your Bearer token" autocomplete="off" />
-        <div class="row" style="margin-top:8px;">
-          <button id="authCheckBtn" class="btn secondary">Check token</button>
-          <span id="authInfo" class="hint"></span>
-        </div>
-        <div class="hint" style="margin-top:6px;">Environment: <span class="pill">https://webexapis.com</span></div>
+        <div class="hint">Token is not saved; it lives only while the page is open.</div>
 
-        <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:22px 0;"/>
-
-        <h2>2) Lookup & Prefill</h2>
-        <div class="row">
-          <div style="flex:2; min-width:260px;">
-            <label>Location name (Webex Calling)</label>
-            <input id="locationName" placeholder="e.g., San Jose HQ" />
-          </div>
-          <div><button id="lookupBtn" class="btn secondary">Lookup</button></div>
-        </div>
-        <div id="lookupResults" class="hint" style="margin:6px 0 0;"></div>
-        <div class="row" id="applyRow" style="margin-top:10px; display:none;">
-          <div style="flex:1; min-width:280px;">
-            <label>Resolved locationId</label>
-            <input id="resolvedLocationId" readonly />
-          </div>
-          <div style="flex:1; min-width:280px;">
-            <label>License</label>
-            <select id="licenseSelect"></select>
-          </div>
-          <div><button id="applyToFormsBtn" class="btn">Apply to forms</button></div>
-        </div>
-
-        <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:22px 0;"/>
-
-        <h2>3) Single Workspace Builder</h2>
-        <div class="row">
-          <div style="flex:1; min-width:220px;">
-            <label>Action</label>
-            <select id="singleAction"></select>
-          </div>
-          <div style="flex:2; min-width:260px;">
-            <label>displayName</label>
-            <input id="single_displayName" placeholder="Conference Room A" />
-          </div>
-          <div style="flex:1; min-width:150px;">
-            <label>type</label>
-            <input id="single_type" placeholder="workstation" />
-          </div>
-          <div style="flex:1; min-width:120px;">
-            <label>capacity</label>
-            <input id="single_capacity" type="number" min="0" placeholder="4" />
-          </div>
-        </div>
-        <div class="row">
-          <div style="flex:1; min-width:180px;">
-            <label>callingType</label>
-            <input id="single_callingType" placeholder="webexCalling" />
-          </div>
-          <div style="flex:1; min-width:220px;">
-            <label>locationId</label>
-            <input id="single_locationId" placeholder="auto from lookup" />
-          </div>
-          <div style="flex:1; min-width:220px;">
-            <label>licenseId</label>
-            <input id="single_licenseId" placeholder="auto from lookup" />
-          </div>
-        </div>
-        <div class="row" id="singleExtRow">
-          <div style="flex:1; min-width:160px;">
-            <label>extension</label>
-            <input id="single_extension" placeholder="1234" />
-          </div>
-        </div>
-        <div class="row" id="singlePhoneRow">
-          <div style="flex:1; min-width:220px;">
-            <label>phoneNumber</label>
-            <input id="single_phoneNumber" placeholder="4155551234 or +14155551234" />
-          </div>
-        </div>
-        <div class="row" style="margin-top:12px;">
-          <button id="singleCreateBtn" class="btn">Create workspace</button>
-          <button id="singleToBulkBtn" class="btn secondary" disabled>Use as template for bulk</button>
-          <span id="singleStatus" class="hint"></span>
-        </div>
-        <div id="singleRequestJson" class="hint" style="margin-top:8px; white-space:pre-wrap;"></div>
-
-        <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:22px 0;"/>
-
-        <h2>4) Bulk Runner</h2>
-        <div class="row">
+        <!-- Choice row: upload or open table editor -->
+        <div class="row" style="margin-top:10px;">
           <button id="uploadCsvTopBtn" class="btn ghost">Upload CSV</button>
           <input id="csvFileTop" type="file" accept=".csv" class="hiddenFile" />
-          <button id="toggleEditorBtn" class="btn secondary">Open table editor</button>
-          <label style="display:flex;align-items:center;gap:8px;">
-            <input id="gentleParallel" type="checkbox" style="width:auto;" /> Gentle parallel (×2)
-          </label>
+          <button id="toggleTableTopBtn" class="btn secondary">Open table editor</button>
           <span class="hint">Paste directly from Excel (headers optional) or upload a CSV.</span>
         </div>
 
-        <div class="row" style="margin-top:14px;">
+        <div class="row" style="margin-top:16px;flex-wrap:wrap;">
           <button id="runBtn" class="btn">Run</button>
           <button id="cancelBtn" class="btn secondary" disabled>Cancel</button>
           <button id="downloadErrorsBtn" class="btn secondary" disabled>Download errors CSV</button>
         </div>
 
-        <div style="margin-top:12px;">
+        <div style="margin-top:18px;">
           <div class="progress"><div id="bar" class="bar"></div></div>
           <div id="status" class="hint" style="margin-top:8px;">Idle</div>
         </div>
       </div>
 
       <div class="card">
-        <h2>Console</h2>
+        <label>Console</label>
         <div id="log" class="log" aria-live="polite"></div>
       </div>
     </div>
 
-    <!-- Full width bottom section for table editor -->
+    <!-- FULL-WIDTH data section (toggled by top button) -->
     <div class="full">
-      <div class="card">
-        <div class="sheetToolbar">
-          <div class="pill" id="colHint">Columns:</div>
-          <span style="flex:1"></span>
-          <button id="addRowBtn" class="btn secondary">Add row</button>
-          <button id="clearRowsBtn" class="btn secondary">Clear rows</button>
-          <button id="pasteCsvBtn" class="btn ghost">Paste from clipboard</button>
-        </div>
-        <div class="sheetWrap" id="editorWrap" style="display:none;">
-          <table class="sheet" id="sheet"></table>
+      <div id="dataSection" class="collapse">
+        <div class="collapseBody">
+          <div class="sheetToolbar">
+            <button id="addRowBtn" class="btn secondary">Add row</button>
+            <button id="clearRowsBtn" class="btn secondary">Clear rows</button>
+            <button id="pasteCsvBtn" class="btn ghost">Paste from clipboard</button>
+            <span class="hint" id="colHint"></span>
+          </div>
+          <div class="sheetWrap">
+            <table class="sheet" id="sheet"></table>
+          </div>
         </div>
       </div>
     </div>
@@ -196,56 +115,28 @@
 
 <script>
 (function() {
-  const BASE_URL = 'https://webexapis.com';
-
   const els = {
-    // Auth
+    apiSelect: document.getElementById('apiSelect'),
     token: document.getElementById('token'),
-    authCheckBtn: document.getElementById('authCheckBtn'),
-    authInfo: document.getElementById('authInfo'),
-    // Lookup
-    locationName: document.getElementById('locationName'),
-    lookupBtn: document.getElementById('lookupBtn'),
-    lookupResults: document.getElementById('lookupResults'),
-    applyRow: document.getElementById('applyRow'),
-    resolvedLocationId: document.getElementById('resolvedLocationId'),
-    licenseSelect: document.getElementById('licenseSelect'),
-    applyToFormsBtn: document.getElementById('applyToFormsBtn'),
-    // Single builder
-    singleAction: document.getElementById('singleAction'),
-    single_displayName: document.getElementById('single_displayName'),
-    single_type: document.getElementById('single_type'),
-    single_capacity: document.getElementById('single_capacity'),
-    single_callingType: document.getElementById('single_callingType'),
-    single_locationId: document.getElementById('single_locationId'),
-    single_licenseId: document.getElementById('single_licenseId'),
-    single_extension: document.getElementById('single_extension'),
-    single_phoneNumber: document.getElementById('single_phoneNumber'),
-    singleCreateBtn: document.getElementById('singleCreateBtn'),
-    singleToBulkBtn: document.getElementById('singleToBulkBtn'),
-    singleStatus: document.getElementById('singleStatus'),
-    singleRequestJson: document.getElementById('singleRequestJson'),
-    // Bulk
     uploadCsvTopBtn: document.getElementById('uploadCsvTopBtn'),
     csvFileTop: document.getElementById('csvFileTop'),
-    toggleEditorBtn: document.getElementById('toggleEditorBtn'),
-    gentleParallel: document.getElementById('gentleParallel'),
+    toggleTableTopBtn: document.getElementById('toggleTableTopBtn'),
+    addRowBtn: document.getElementById('addRowBtn'),
+    clearRowsBtn: document.getElementById('clearRowsBtn'),
+    pasteCsvBtn: document.getElementById('pasteCsvBtn'),
     runBtn: document.getElementById('runBtn'),
     cancelBtn: document.getElementById('cancelBtn'),
     downloadErrorsBtn: document.getElementById('downloadErrorsBtn'),
     bar: document.getElementById('bar'),
     status: document.getElementById('status'),
-    // Console
     log: document.getElementById('log'),
-    // Table
-    editorWrap: document.getElementById('editorWrap'),
     sheet: document.getElementById('sheet'),
-    addRowBtn: document.getElementById('addRowBtn'),
-    clearRowsBtn: document.getElementById('clearRowsBtn'),
-    pasteCsvBtn: document.getElementById('pasteCsvBtn'),
     colHint: document.getElementById('colHint'),
+    dataSection: document.getElementById('dataSection'),
   };
 
+  const BASE_URL = 'https://webexapis.com';
+  const CONCURRENCY = 1; // sequential for clearer progress
   const ACTIONS = {
     create_workspaces_ext:   { endpoint: '/v1/workspaces', method: 'POST', label: 'Create Workspaces Using Extension', cols: ['displayName','locationId','capacity','type','callingType','licenseId','extension'] },
     create_workspaces_phone: { endpoint: '/v1/workspaces', method: 'POST', label: 'Create Workspaces Using Phone Number', cols: ['displayName','locationId','capacity','type','callingType','licenseId','phoneNumber'] },
@@ -253,237 +144,103 @@
   };
 
   let rows = [];
-  let abortController = null;
 
-  // Utilities
   function log(msg, type) {
     const line = document.createElement('div');
     if (type === 'error') line.style.color = '#f87171';
     if (type === 'warn') line.style.color = '#fbbf24';
     line.textContent = msg; els.log.appendChild(line); els.log.scrollTop = els.log.scrollHeight;
   }
+
   function setProgress(done, total) {
     const pct = total ? Math.round((done/total) * 100) : 0;
     els.bar.style.width = pct + '%'; els.status.textContent = `${done}/${total} (${pct}%)`;
   }
-  async function apiGet(path, token) {
-    const res = await fetch(BASE_URL + path, { headers: { 'Authorization': `Bearer ${token}` }});
-    if (!res.ok) throw new Error(`GET ${path} -> ${res.status}`);
-    return res.json();
-  }
-  async function apiPost(path, token, body) {
-    const res = await fetch(BASE_URL + path, { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const text = await res.text();
-    if (!res.ok) throw new Error(`POST ${path} -> ${res.status}: ${text}`);
-    return text;
-  }
 
-  // Init action selects
-  (function initActionSelects(){
-    // single action
-    els.singleAction.innerHTML = '';
-    Object.entries(ACTIONS).forEach(([k,v])=>{
-      const o = document.createElement('option'); o.value=k; o.textContent=v.label; els.singleAction.appendChild(o);
-    });
-    els.singleAction.value = 'create_workspaces_ext';
-    updateSingleMode();
-  })();
-
-  function updateSingleMode(){
-    const key = els.singleAction.value;
-    document.getElementById('singleExtRow').style.display = (key==='create_workspaces_ext' || key==='create_workspaces_both') ? 'flex' : 'none';
-    document.getElementById('singlePhoneRow').style.display = (key==='create_workspaces_phone' || key==='create_workspaces_both') ? 'flex' : 'none';
-    // also update table headers hint
-    const cols = ACTIONS[key].cols; els.colHint.textContent = 'Columns: ' + cols.join(', ');
-  }
-  els.singleAction.addEventListener('change', updateSingleMode);
-
-  // Auth check
-  els.authCheckBtn.addEventListener('click', async ()=>{
-    try {
-      els.authInfo.textContent = 'Checking…';
-      const token = els.token.value.trim(); if (!token) throw new Error('Paste your token first.');
-      const me = await apiGet('/v1/people/me', token);
-      els.authInfo.textContent = `Hello ${me.displayName || me.nickName || 'user'} · org: ${me.orgId || '—'}`;
-    } catch(e) { els.authInfo.textContent = e.message; }
-  });
-
-  // Lookup & Prefill
-  els.lookupBtn.addEventListener('click', async ()=>{
-    try {
-      const token = els.token.value.trim(); if (!token) throw new Error('Paste your Bearer token first.');
-      const name = (els.locationName.value || '').trim(); if (!name) throw new Error('Enter a location name to search.');
-      els.lookupResults.textContent = 'Looking up…';
-
-      let location = null;
-      try {
-        const data = await apiGet('/v1/telephony/config/locations', token);
-        if (Array.isArray(data.locations)) {
-          location = data.locations.find(l => (l.name||'').toLowerCase() === name.toLowerCase())
-                  || data.locations.find(l => (l.name||'').toLowerCase().includes(name.toLowerCase()));
-        }
-      } catch(_){}
-      if (!location) {
-        try {
-          const data2 = await apiGet('/v1/locations', token);
-          if (Array.isArray(data2.items)) {
-            location = data2.items.find(l => (l.displayName||'').toLowerCase() === name.toLowerCase())
-                   || data2.items.find(l => (l.displayName||'').toLowerCase().includes(name.toLowerCase()));
-          }
-        } catch(_){}
-      }
-      if (!location) throw new Error('Location not found. Try a different name.');
-
-      els.resolvedLocationId.value = location.id || location.locationId || '';
-
-      // Licenses
-      let licenses = [];
-      try {
-        const lic = await apiGet('/v1/licenses', token);
-        if (Array.isArray(lic.items)) licenses = lic.items; else if (Array.isArray(lic.licenses)) licenses = lic.licenses;
-      } catch(_){}
-      els.licenseSelect.innerHTML = licenses.map(x=>`<option value="${x.id}">${x.name||x.displayName||x.sku||x.id}</option>`).join('');
-
-      els.applyRow.style.display = 'flex';
-      els.lookupResults.textContent = `Found location: ${location.name||location.displayName} · ${els.resolvedLocationId.value}`;
-    } catch(e) { els.lookupResults.textContent = e.message; }
-  });
-
-  els.applyToFormsBtn.addEventListener('click', ()=>{
-    const loc = els.resolvedLocationId.value.trim();
-    const lic = els.licenseSelect.value;
-    // fill single builder if blank
-    if (loc && !els.single_locationId.value) els.single_locationId.value = loc;
-    if (lic && !els.single_licenseId.value) els.single_licenseId.value = lic;
-    // fill table rows (only blanks)
-    const cols = ACTIONS[els.singleAction.value].cols;
-    const hasLoc = cols.includes('locationId');
-    const hasLic = cols.includes('licenseId');
-    for (let i=0;i<rows.length;i++) {
-      if (hasLoc && (!rows[i].locationId || rows[i].locationId==='')) rows[i].locationId = loc;
-      if (hasLic && (!rows[i].licenseId || rows[i].licenseId==='')) rows[i].licenseId = lic;
+  // Toggle table editor from the top button
+  els.toggleTableTopBtn.addEventListener('click', () => {
+    els.dataSection.classList.toggle('open');
+    els.toggleTableTopBtn.textContent = els.dataSection.classList.contains('open') ? 'Hide table editor' : 'Open table editor';
+    if (els.dataSection.classList.contains('open')) {
+      els.dataSection.scrollIntoView({behavior:'smooth', block:'start'});
     }
-    renderTable();
-    els.lookupResults.textContent = 'Applied to forms and current table rows.';
   });
 
-  // Single builder create
-  els.singleCreateBtn.addEventListener('click', async ()=>{
-    try {
-      els.singleStatus.textContent = 'Creating…';
-      const token = els.token.value.trim(); if (!token) throw new Error('Paste your token first.');
-      const key = els.singleAction.value; const body = buildBody(key, {
-        displayName: els.single_displayName.value,
-        locationId: els.single_locationId.value,
-        capacity: els.single_capacity.value,
-        type: els.single_type.value,
-        callingType: els.single_callingType.value,
-        licenseId: els.single_licenseId.value,
-        extension: els.single_extension.value,
-        phoneNumber: els.single_phoneNumber.value,
-      });
-      els.singleRequestJson.textContent = JSON.stringify(body, null, 2);
-      const resText = await apiPost(ACTIONS[key].endpoint, token, body);
-      els.singleStatus.textContent = 'Created successfully.';
-      els.singleToBulkBtn.disabled = false;
-      log('Single create: success');
-    } catch(e) { els.singleStatus.textContent = e.message; log('Single create: ' + e.message, 'error'); }
-  });
+  // ---- Table rendering ----
+  function renderTable() {
+    const cols = ACTIONS[els.apiSelect.value].cols;
+    els.colHint.textContent = `Columns: ${cols.join(', ')}`;
 
-  // Use as template → push into bulk table
-  els.singleToBulkBtn.addEventListener('click', ()=>{
-    const key = els.singleAction.value; const cols = ACTIONS[key].cols; const obj = {};
-    const src = {
-      displayName: els.single_displayName.value,
-      locationId: els.single_locationId.value,
-      capacity: els.single_capacity.value,
-      type: els.single_type.value,
-      callingType: els.single_callingType.value,
-      licenseId: els.single_licenseId.value,
-      extension: els.single_extension.value,
-      phoneNumber: els.single_phoneNumber.value,
-    };
-    cols.forEach(c=> obj[c] = src[c] ?? ''); rows.push(obj); renderTable();
-    // open editor
-    els.editorWrap.style.display = '';
-    els.editorWrap.scrollIntoView({behavior:'smooth', block:'start'});
-  });
-
-  // Bulk editor
-  function renderTable(){
-    const key = els.singleAction.value; const cols = ACTIONS[key].cols; els.colHint.textContent = 'Columns: ' + cols.join(', ');
     const thead = `<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}<th>✕</th></tr></thead>`;
     const tbody = `<tbody>${rows.map((r,ri)=>`<tr>${cols.map(c=>`<td><input data-ri="${ri}" data-key="${c}" value="${r[c]??''}"/></td>`).join('')}<td><button class="btn secondary" data-del="${ri}">Delete</button></td></tr>`).join('')}</tbody>`;
     els.sheet.innerHTML = thead + tbody;
 
+    // inputs
     els.sheet.querySelectorAll('input[data-ri]').forEach(inp=>{
       inp.addEventListener('input', (e)=>{
-        const ri = +e.target.getAttribute('data-ri'); const key = e.target.getAttribute('data-key'); rows[ri][key] = e.target.value;
+        const ri = Number(e.target.getAttribute('data-ri'));
+        const key = e.target.getAttribute('data-key'); rows[ri][key] = e.target.value;
       });
       // Excel-style paste
       inp.addEventListener('paste', (e)=>{
         const text = e.clipboardData?.getData('text');
-        if (!text || (!text.includes('\t') && !text.includes('\n'))) return;
+        if (!text || (!text.includes('\t') && !text.includes('\n'))) return; // normal paste
         e.preventDefault();
-        const startRi = +e.target.getAttribute('data-ri');
+        const startRi = Number(e.target.getAttribute('data-ri'));
+        const cols = ACTIONS[els.apiSelect.value].cols;
         const startKey = e.target.getAttribute('data-key');
-        const cols = ACTIONS[els.singleAction.value].cols; const startCi = cols.indexOf(startKey);
+        const startCi = cols.indexOf(startKey);
         const delim = text.includes('\t') ? '\t' : ',';
         const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.length>0);
         const cells = lines.map(l=> l.split(new RegExp(delim)).map(x=>x.trim()));
-        const header = cells[0]; const headerMatches = header.every(h => cols.includes(h));
+        const header = cells[0];
+        const headerMatches = header.every(h => cols.includes(h));
         if (headerMatches) {
           const map = header.map(h => cols.indexOf(h));
-          for (let r = 1; r < cells.length; r++) { const rowIdx = startRi + r - 1; if (!rows[rowIdx]) { const o = {}; cols.forEach(c=>o[c]=''); rows[rowIdx]=o; }
-            map.forEach((ci,i)=>{ if (ci>=0) rows[rowIdx][cols[ci]] = cells[r][i] ?? ''; }); }
+          for (let r = 1; r < cells.length; r++) {
+            const rowIdx = startRi + r - 1; if (!rows[rowIdx]) { const obj = {}; cols.forEach(c=>obj[c]=''); rows[rowIdx]=obj; }
+            map.forEach((ci,i)=>{ if (ci>=0) rows[rowIdx][cols[ci]] = cells[r][i] ?? ''; });
+          }
         } else {
-          for (let r = 0; r < cells.length; r++) { const rowIdx = startRi + r; if (!rows[rowIdx]) { const o = {}; cols.forEach(c=>o[c]=''); rows[rowIdx]=o; }
-            for (let c = 0; c < cells[r].length; c++) { const colIdx = startCi + c; if (colIdx < cols.length) rows[rowIdx][cols[colIdx]] = cells[r][c] ?? ''; } }
+          for (let r = 0; r < cells.length; r++) {
+            const rowIdx = startRi + r; if (!rows[rowIdx]) { const obj = {}; cols.forEach(c=>obj[c]=''); rows[rowIdx]=obj; }
+            for (let c = 0; c < cells[r].length; c++) { const colIdx = startCi + c; if (colIdx < cols.length) rows[rowIdx][cols[colIdx]] = cells[r][c] ?? ''; }
+          }
         }
         renderTable();
       });
     });
+
     els.sheet.querySelectorAll('button[data-del]').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{ const ri = +e.target.getAttribute('data-del'); rows.splice(ri,1); renderTable(); });
+      btn.addEventListener('click', (e)=>{ const ri = Number(e.target.getAttribute('data-del')); rows.splice(ri,1); renderTable(); });
     });
   }
 
-  els.addRowBtn.addEventListener('click', ()=>{ const cols = ACTIONS[els.singleAction.value].cols; const obj = {}; cols.forEach(c=>obj[c]=''); rows.push(obj); renderTable(); });
-  els.clearRowsBtn.addEventListener('click', ()=>{ rows = []; renderTable(); });
-  els.pasteCsvBtn.addEventListener('click', ()=>{
-    navigator.clipboard.readText().then(txt=>{ if (!txt) return; const cols = ACTIONS[els.singleAction.value].cols;
-      const delim = txt.includes('\t') ? '\t' : ','; const lines = txt.replace(/\r/g,'').split('\n').filter(l=>l.length>0);
-      const cells = lines.map(l=> l.split(new RegExp(delim)).map(x=>x.trim())); const header = cells[0]; const headerMatches = header.every(h => cols.includes(h));
-      if (headerMatches) { const map = header.map(h => cols.indexOf(h)); for (let r=1;r<cells.length;r++){ const o={}; cols.forEach(c=>o[c]=''); map.forEach((ci,i)=>{ if (ci>=0) o[cols[ci]] = cells[r][i] ?? ''; }); rows.push(o); } }
-      else { for (let r=0;r<cells.length;r++){ const o={}; cols.forEach((c,i)=> o[c] = cells[r][i] ?? ''); rows.push(o); } }
-      renderTable(); els.editorWrap.style.display = '';
+  function addRow() { const cols = ACTIONS[els.apiSelect.value].cols; const obj = {}; cols.forEach(c=>obj[c]=''); rows.push(obj); renderTable(); }
+  function clearRows() { rows = []; renderTable(); }
+
+  function handleUpload(file) {
+    if (!file) return; const cols = ACTIONS[els.apiSelect.value].cols;
+    Papa.parse(file, { header: true, skipEmptyLines: true,
+      complete: (res)=>{
+        const incoming = res.data.map(d=>{ const obj = {}; cols.forEach(c=> obj[c] = d[c] ?? ''); return obj; });
+        rows = rows.concat(incoming); renderTable();
+        log(`Uploaded ${incoming.length} row(s) from CSV.`);
+        if (!els.dataSection.classList.contains('open')) {
+          els.dataSection.classList.add('open'); els.toggleTableTopBtn.textContent = 'Hide table editor';
+        }
+        els.dataSection.scrollIntoView({behavior:'smooth', block:'start'});
+      },
+      error: (err)=> log('CSV parse error: ' + err.message, 'error')
     });
-  });
+  }
 
-  // open/close editor
-  els.toggleEditorBtn.addEventListener('click', ()=>{
-    const open = els.editorWrap.style.display !== 'none';
-    els.editorWrap.style.display = open ? 'none' : '';
-    els.toggleEditorBtn.textContent = open ? 'Open table editor' : 'Hide table editor';
-  });
-
-  // upload csv
-  els.uploadCsvTopBtn.addEventListener('click', ()=> els.csvFileTop.click());
-  els.csvFileTop.addEventListener('change', (e)=>{
-    const file = e.target.files[0]; if (!file) return; const cols = ACTIONS[els.singleAction.value].cols;
-    Papa.parse(file, { header: true, skipEmptyLines: true, complete: (res)=>{
-      const incoming = res.data.map(d=>{ const o={}; cols.forEach(c=> o[c] = d[c] ?? ''); return o; });
-      rows = rows.concat(incoming); renderTable(); els.editorWrap.style.display='';
-      log(`Uploaded ${incoming.length} row(s) from CSV.`);
-    }, error:(err)=> log('CSV parse error: ' + err.message, 'error')});
-  });
-
-  // Build request body (shared)
+  // Build body
   function buildBody(actionKey, row) {
     const n = (v) => (v === '' || v === undefined || v === null) ? undefined : Number(v);
     const s = (v) => (v === undefined || v === null) ? undefined : String(v);
     const listLicenses = (v) => { if (v == null) return []; const str = String(v).trim(); if (!str) return []; return str.split(/[,;]/).map(x => x.trim()).filter(Boolean); };
-    const phone = (v) => { if (!v) return undefined; const t=String(v).trim(); if (!t) return undefined; return t.startsWith('+') ? t : `+1${t}`; };
+    const phone = (v) => { if (!v) return undefined; const t = String(v).trim(); if (!t) return undefined; return t.startsWith('+') ? t : `+1${t}`; };
 
     const base = { displayName: s(row['displayName']), locationId: s(row['locationId']), capacity: n(row['capacity']), type: s(row['type']),
       calling: { type: s(row['callingType']), webexCalling: { locationId: s(row['locationId']), licenses: listLicenses(row['licenseId']) } } };
@@ -492,45 +249,9 @@
     else if (actionKey === 'create_workspaces_phone') base.calling.webexCalling.phoneNumber = phone(row['phoneNumber']);
     else if (actionKey === 'create_workspaces_both') { base.calling.webexCalling.phoneNumber = phone(row['phoneNumber']); base.calling.webexCalling.extension = s(row['extension']); }
 
-    function prune(obj) { if (Array.isArray(obj)) return obj.filter(v => v !== undefined && v !== null); const out={}; Object.keys(obj).forEach(k=>{ const v=obj[k]; if (v && typeof v==='object' && !Array.isArray(v)){ const p=prune(v); if (Object.keys(p).length) out[k]=p; } else if (v!==undefined){ out[k]=v; } }); return out; }
+    function prune(obj) { if (Array.isArray(obj)) return obj.filter(v => v !== undefined && v !== null); const out = {}; Object.keys(obj).forEach(k => { const v = obj[k]; if (v && typeof v === 'object' && !Array.isArray(v)) { const p = prune(v); if (Object.keys(p).length) out[k] = p; } else if (v !== undefined) { out[k] = v; } }); return out; }
     return prune(base);
   }
-
-  // Runner
-  async function sendRow({row, idx, cfg, token, signal}) {
-    const body = buildBody(cfg.key, row);
-    return apiPost(cfg.endpoint, token, body);
-  }
-
-  els.runBtn.addEventListener('click', async ()=>{
-    let errors = [];
-    els.runBtn.disabled = true; els.cancelBtn.disabled = false; els.downloadErrorsBtn.disabled = true; els.log.textContent=''; setProgress(0,0);
-    abortController = new AbortController();
-    try {
-      const token = els.token.value.trim(); if (!token) throw new Error('Bearer token required.');
-      const key = els.singleAction.value; const cfg = { key, endpoint: ACTIONS[key].endpoint };
-      const data = rows.map(r=>({...r})); if (!data.length) throw new Error('No rows to process.');
-      const total = data.length; setProgress(0,total); log(`Loaded ${total} row(s).`);
-
-      const concurrency = els.gentleParallel.checked ? 2 : 1;
-      let done = 0; const queue = data.map((row,idx)=>({row,idx}));
-      async function worker(){
-        while(queue.length){ const item = queue.shift(); if(!item) break;
-          try{ await sendRow({ row:item.row, idx:item.idx, cfg, token, signal: abortController.signal }); log(`Row ${item.idx+1}: ✓ success`); }
-          catch(e){ log(`Row ${item.idx+1}: ✗ ${e.message}`, 'error'); errors.push({ row:item.idx+1, error:e.message, ...item.row }); }
-          finally{ done++; setProgress(done,total); }
-        }
-      }
-      await Promise.all(Array.from({length: concurrency}, worker));
-
-      if (errors.length){ log(`Finished with ${errors.length} error(s).`, 'error'); els.downloadErrorsBtn.disabled=false; els.downloadErrorsBtn.onclick=()=>downloadCSV(errors); }
-      else { log('All done successfully.'); }
-    } catch(e) { log(e.message||String(e), 'error'); }
-    finally { els.runBtn.disabled=false; els.cancelBtn.disabled=true; abortController=null; }
-  });
-
-  // Cancel (placeholder for future abort-aware fetch)
-  els.cancelBtn.addEventListener('click', ()=>{ abortController?.abort(); log('Cancelled by user.','warn'); els.cancelBtn.disabled=true; els.runBtn.disabled=false; });
 
   function downloadCSV(rowsArr, name = 'errors.csv') {
     if (!rowsArr.length) return; const headers = Array.from(new Set(rowsArr.flatMap(r => Object.keys(r))));
@@ -538,8 +259,77 @@
     const blob = new Blob([csv], {type:'text/csv'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
   }
 
-  // Initial state
-  const initCols = ACTIONS[els.singleAction.value].cols; els.colHint.textContent = 'Columns: ' + initCols.join(', ');
+  (function initSelect(){
+    const sel = els.apiSelect; sel.innerHTML = '';
+    Object.entries(ACTIONS).forEach(([key, cfg]) => { const opt = document.createElement('option'); opt.value = key; opt.textContent = cfg.label; sel.appendChild(opt); });
+    sel.value = 'create_workspaces_ext'; sel.addEventListener('change', ()=>{ rows = []; addRow(); });
+  })();
+
+  // initial empty rows
+  addRow(); addRow(); addRow(); renderTable();
+
+  // handlers
+  els.addRowBtn.addEventListener('click', addRow);
+  els.clearRowsBtn.addEventListener('click', clearRows);
+  els.pasteCsvBtn.addEventListener('click', ()=>{
+    navigator.clipboard.readText().then(txt=>{
+      if (!txt) return; const cols = ACTIONS[els.apiSelect.value].cols;
+      const delim = txt.includes('\t') ? '\t' : ',';
+      const lines = txt.replace(/\r/g,'').split('\n').filter(l=>l.length>0);
+      const cells = lines.map(l=> l.split(new RegExp(delim)).map(x=>x.trim()));
+      const header = cells[0]; const headerMatches = header.every(h => cols.includes(h));
+      if (headerMatches) {
+        const map = header.map(h => cols.indexOf(h));
+        for (let r = 1; r < cells.length; r++) { const obj = {}; cols.forEach(c=>obj[c]=''); map.forEach((ci,i)=>{ if (ci>=0) obj[cols[ci]] = cells[r][i] ?? ''; }); rows.push(obj); }
+      } else {
+        for (let r = 0; r < cells.length; r++) { const obj = {}; cols.forEach((c,i)=> obj[c] = cells[r][i] ?? ''); rows.push(obj); }
+      }
+      renderTable(); if (!els.dataSection.classList.contains('open')) { els.dataSection.classList.add('open'); els.toggleTableTopBtn.textContent = 'Hide table editor'; }
+      els.dataSection.scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
+  els.uploadCsvTopBtn.addEventListener('click', ()=> els.csvFileTop.click());
+  els.csvFileTop.addEventListener('change', (e)=> handleUpload(e.target.files[0]));
+
+  async function sendRow({row, idx, cfg}) {
+    const { endpoint, method, token, actionKey } = cfg; const url = BASE_URL + endpoint;
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+    const bodyObj = buildBody(actionKey, row); const body = JSON.stringify(bodyObj);
+    const res = await fetch(url, { method, headers, body }); const text = await res.text();
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`); return text;
+  }
+
+  function getRowsFromTable() { return rows.map(r=>({ ...r })); }
+
+  async function run() {
+    let errors = []; els.runBtn.disabled = true; els.cancelBtn.disabled = false; els.downloadErrorsBtn.disabled = true;
+    els.log.textContent = ''; setProgress(0, 0);
+
+    try {
+      const actionKey = els.apiSelect.value; const action = ACTIONS[actionKey];
+      const token = els.token.value.trim(); if (!token) throw new Error('Bearer token required.');
+      const data = getRowsFromTable(); if (!data.length) throw new Error('No rows to process.');
+
+      const total = data.length; setProgress(0, total); log(`Loaded ${total} row(s).`);
+
+      let done = 0; const queue = data.map((row, idx) => ({row, idx}));
+      async function worker() {
+        while (queue.length) {
+          const item = queue.shift(); if (!item) break;
+          try { await sendRow({ row: item.row, idx: item.idx, cfg: { ...action, token, actionKey } }); log(`Row ${item.idx+1}: ✓ success`); }
+          catch (e) { log(`Row ${item.idx+1}: ✗ ${e.message}`, 'error'); errors.push({ row: item.idx+1, error: e.message, ...item.row }); }
+          finally { done++; setProgress(done, total); }
+        }
+      }
+      await Promise.all(Array.from({length: 1}, worker));
+
+      if (errors.length) { log(`Finished with ${errors.length} error(s).`, 'error'); els.downloadErrorsBtn.disabled = false; els.downloadErrorsBtn.onclick = ()=>downloadCSV(errors); }
+      else { log('All done successfully.'); }
+    } catch (e) { log(String(e.message || e), 'error'); }
+    finally { els.runBtn.disabled = false; els.cancelBtn.disabled = true; }
+  }
+
+  els.runBtn.addEventListener('click', run);
 })();
 </script>
 </body>
