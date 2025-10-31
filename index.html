@@ -15,11 +15,10 @@
     .sub { color:var(--muted); }
     .logo { height:40px; }
 
-    /* top grid for controls + console */
     .grid { display:grid; grid-template-columns:3fr 1fr; gap:24px; }
     .card { position:relative; background:var(--card); border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.25); overflow:hidden; }
     label { display:block; font-size:13px; color:var(--muted); margin:8px 0 6px; }
-    input, select, textarea { width:100%; border-radius:12px; border:1px solid rgba(255,255,255,.08); background:#0e1525; color:var(--fg); padding:10px 12px; outline:none; font-size:14px; cursor:text; }
+    input, select { width:100%; border-radius:12px; border:1px solid rgba(255,255,255,.08); background:#0e1525; color:var(--fg); padding:10px 12px; outline:none; font-size:14px; }
     select { cursor:pointer; }
     .row { display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
     .btn { background:linear-gradient(135deg,#22d3ee,#3b82f6); border:none; color:#06111d; font-weight:700; padding:10px 18px; border-radius:12px; cursor:pointer; }
@@ -30,20 +29,14 @@
     .progress { height:10px; background:#0e1525; border:1px solid rgba(255,255,255,.08); border-radius:999px; overflow:hidden; width:100%; }
     .bar { height:100%; background:linear-gradient(90deg,#22d3ee,#3b82f6); width:0%; transition:width .25s ease; }
     .log { height:420px; overflow:auto; background:#0e1525; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:12px; font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; font-size:13px; white-space:pre-wrap; }
-    .danger { color:var(--err); }
-    .warn { color:var(--warn); }
 
     /* Full-width data section */
     .full { margin-top:24px; }
     .collapse { border:1px solid rgba(255,255,255,.08); border-radius:14px; background:#0e1525; }
-    .collapseHead { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; cursor:pointer; user-select:none; }
-    .collapseHead .title { font-size:16px; font-weight:700; }
-    .chev { transition: transform .2s ease; }
-    .collapseBody { display:none; padding:12px 14px 16px; border-top:1px solid rgba(255,255,255,.08); }
+    .collapseBody { display:none; padding:12px 14px 16px; }
     .collapse.open .collapseBody { display:block; }
-    .collapse.open .chev { transform: rotate(90deg); }
 
-    /* Editable table (compact) */
+    /* Editable table */
     .sheetToolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
     .sheetToolbar .hint { margin-left:auto; }
     .sheetWrap { border:1px solid rgba(255,255,255,.08); border-radius:12px; overflow:auto; }
@@ -52,7 +45,7 @@
     table.sheet th { position:sticky; top:0; background:#0f172a; text-align:left; font-weight:700; color:#cbd5e1; z-index:1; font-size:12px; }
     table.sheet tr:last-child td { border-bottom:none; }
     table.sheet th:last-child, table.sheet td:last-child { border-right:none; }
-    table.sheet td input { width:100%; background:transparent; border:none; color:var(--fg); outline:none; padding:0; height:28px; line-height:1.2; font-size:13px; cursor:text; }
+    table.sheet td input { width:100%; background:transparent; border:none; color:var(--fg); outline:none; padding:0; height:28px; line-height:1.2; font-size:13px; }
     .hiddenFile { display:none; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
@@ -62,7 +55,7 @@
     <div class="header">
       <div>
         <div class="title">Webex API Tool</div>
-        <div class="sub">Pick an action, upload CSV at top or use the table below — then run. Calls go to <code>https://webexapis.com</code>.</div>
+        <div class="sub">Choose an action. Either **upload a CSV** or **edit in an on‑screen table**, then Run.</div>
       </div>
       <img src="CX%20Advanced%20Solutions_Smaller_white.png" alt="Logo" class="logo" />
     </div>
@@ -76,10 +69,12 @@
         <input id="token" type="password" placeholder="Paste your Bearer token" autocomplete="off" />
         <div class="hint">Token is not saved; it lives only while the page is open.</div>
 
-        <!-- Top-level CSV upload so users can choose upload first -->
+        <!-- Choice row: upload or open table editor -->
         <div class="row" style="margin-top:10px;">
           <button id="uploadCsvTopBtn" class="btn ghost">Upload CSV</button>
           <input id="csvFileTop" type="file" accept=".csv" class="hiddenFile" />
+          <button id="toggleTableTopBtn" class="btn secondary">Open table editor</button>
+          <span class="hint">Paste directly from Excel (headers optional) or upload a CSV.</span>
         </div>
 
         <div class="row" style="margin-top:16px;flex-wrap:wrap;">
@@ -100,13 +95,9 @@
       </div>
     </div>
 
-    <!-- FULL-WIDTH data section -->
+    <!-- FULL-WIDTH data section (toggled by top button) -->
     <div class="full">
-      <div id="dataSection" class="collapse open">
-        <div id="toggleDataBtn" class="collapseHead">
-          <div class="title">Data Table</div>
-          <div class="chev">▶</div>
-        </div>
+      <div id="dataSection" class="collapse">
         <div class="collapseBody">
           <div class="sheetToolbar">
             <button id="addRowBtn" class="btn secondary">Add row</button>
@@ -127,10 +118,9 @@
   const els = {
     apiSelect: document.getElementById('apiSelect'),
     token: document.getElementById('token'),
-    // top upload
     uploadCsvTopBtn: document.getElementById('uploadCsvTopBtn'),
     csvFileTop: document.getElementById('csvFileTop'),
-    // data table controls
+    toggleTableTopBtn: document.getElementById('toggleTableTopBtn'),
     addRowBtn: document.getElementById('addRowBtn'),
     clearRowsBtn: document.getElementById('clearRowsBtn'),
     pasteCsvBtn: document.getElementById('pasteCsvBtn'),
@@ -143,7 +133,6 @@
     sheet: document.getElementById('sheet'),
     colHint: document.getElementById('colHint'),
     dataSection: document.getElementById('dataSection'),
-    toggleDataBtn: document.getElementById('toggleDataBtn'),
   };
 
   const BASE_URL = 'https://webexapis.com';
@@ -158,72 +147,64 @@
 
   function log(msg, type) {
     const line = document.createElement('div');
-    if (type === 'error') line.classList.add('danger');
-    if (type === 'warn') line.classList.add('warn');
-    line.textContent = msg;
-    els.log.appendChild(line);
-    els.log.scrollTop = els.log.scrollHeight;
+    if (type === 'error') line.style.color = '#f87171';
+    if (type === 'warn') line.style.color = '#fbbf24';
+    line.textContent = msg; els.log.appendChild(line); els.log.scrollTop = els.log.scrollHeight;
   }
 
   function setProgress(done, total) {
     const pct = total ? Math.round((done/total) * 100) : 0;
-    els.bar.style.width = pct + '%';
-    els.status.textContent = `${done}/${total} (${pct}%)`;
+    els.bar.style.width = pct + '%'; els.status.textContent = `${done}/${total} (${pct}%)`;
   }
 
-  // Collapsible toggle
-  els.toggleDataBtn.addEventListener('click', () => {
+  // Toggle table editor from the top button
+  els.toggleTableTopBtn.addEventListener('click', () => {
     els.dataSection.classList.toggle('open');
+    els.toggleTableTopBtn.textContent = els.dataSection.classList.contains('open') ? 'Hide table editor' : 'Open table editor';
+    if (els.dataSection.classList.contains('open')) {
+      els.dataSection.scrollIntoView({behavior:'smooth', block:'start'});
+    }
   });
 
   // ---- Table rendering ----
   function renderTable() {
-    const action = ACTIONS[els.apiSelect.value];
-    const cols = action.cols;
+    const cols = ACTIONS[els.apiSelect.value].cols;
     els.colHint.textContent = `Columns: ${cols.join(', ')}`;
 
     const thead = `<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}<th>✕</th></tr></thead>`;
     const tbody = `<tbody>${rows.map((r,ri)=>`<tr>${cols.map(c=>`<td><input data-ri="${ri}" data-key="${c}" value="${r[c]??''}"/></td>`).join('')}<td><button class="btn secondary" data-del="${ri}">Delete</button></td></tr>`).join('')}</tbody>`;
     els.sheet.innerHTML = thead + tbody;
 
-    // Wire inputs
+    // inputs
     els.sheet.querySelectorAll('input[data-ri]').forEach(inp=>{
       inp.addEventListener('input', (e)=>{
         const ri = Number(e.target.getAttribute('data-ri'));
-        const key = e.target.getAttribute('data-key');
-        rows[ri][key] = e.target.value;
+        const key = e.target.getAttribute('data-key'); rows[ri][key] = e.target.value;
       });
-
-      // Excel-style multi-cell paste
+      // Excel-style paste
       inp.addEventListener('paste', (e)=>{
         const text = e.clipboardData?.getData('text');
-        if (!text || (!text.includes('\t') && !text.includes('\n'))) return; // let normal paste
+        if (!text || (!text.includes('\t') && !text.includes('\n'))) return; // normal paste
         e.preventDefault();
         const startRi = Number(e.target.getAttribute('data-ri'));
-        const startKey = e.target.getAttribute('data-key');
         const cols = ACTIONS[els.apiSelect.value].cols;
+        const startKey = e.target.getAttribute('data-key');
         const startCi = cols.indexOf(startKey);
-        // detect delimiter (tab for Excel, comma otherwise)
         const delim = text.includes('\t') ? '\t' : ',';
         const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.length>0);
         const cells = lines.map(l=> l.split(new RegExp(delim)).map(x=>x.trim()));
-        // If first row seems like headers matching our cols, map by header
         const header = cells[0];
         const headerMatches = header.every(h => cols.includes(h));
         if (headerMatches) {
           const map = header.map(h => cols.indexOf(h));
           for (let r = 1; r < cells.length; r++) {
-            const rowIdx = startRi + r - 1;
-            if (!rows[rowIdx]) { const obj = {}; cols.forEach(c=>obj[c]=''); rows[rowIdx]=obj; }
-            map.forEach((ci, i)=>{ if (ci>=0) rows[rowIdx][cols[ci]] = cells[r][i] ?? ''; });
+            const rowIdx = startRi + r - 1; if (!rows[rowIdx]) { const obj = {}; cols.forEach(c=>obj[c]=''); rows[rowIdx]=obj; }
+            map.forEach((ci,i)=>{ if (ci>=0) rows[rowIdx][cols[ci]] = cells[r][i] ?? ''; });
           }
         } else {
-          // paste into grid starting at selected cell
           for (let r = 0; r < cells.length; r++) {
             const rowIdx = startRi + r; if (!rows[rowIdx]) { const obj = {}; cols.forEach(c=>obj[c]=''); rows[rowIdx]=obj; }
-            for (let c = 0; c < cells[r].length; c++) {
-              const colIdx = startCi + c; if (colIdx < cols.length) rows[rowIdx][cols[colIdx]] = cells[r][c] ?? '';
-            }
+            for (let c = 0; c < cells[r].length; c++) { const colIdx = startCi + c; if (colIdx < cols.length) rows[rowIdx][cols[colIdx]] = cells[r][c] ?? ''; }
           }
         }
         renderTable();
@@ -231,10 +212,7 @@
     });
 
     els.sheet.querySelectorAll('button[data-del]').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        const ri = Number(e.target.getAttribute('data-del'));
-        rows.splice(ri,1); renderTable();
-      });
+      btn.addEventListener('click', (e)=>{ const ri = Number(e.target.getAttribute('data-del')); rows.splice(ri,1); renderTable(); });
     });
   }
 
@@ -242,50 +220,36 @@
   function clearRows() { rows = []; renderTable(); }
 
   function handleUpload(file) {
-    if (!file) return;
-    const cols = ACTIONS[els.apiSelect.value].cols;
-    Papa.parse(file, {
-      header: true, skipEmptyLines: true,
+    if (!file) return; const cols = ACTIONS[els.apiSelect.value].cols;
+    Papa.parse(file, { header: true, skipEmptyLines: true,
       complete: (res)=>{
         const incoming = res.data.map(d=>{ const obj = {}; cols.forEach(c=> obj[c] = d[c] ?? ''); return obj; });
         rows = rows.concat(incoming); renderTable();
         log(`Uploaded ${incoming.length} row(s) from CSV.`);
-        if (!els.dataSection.classList.contains('open')) els.dataSection.classList.add('open');
+        if (!els.dataSection.classList.contains('open')) {
+          els.dataSection.classList.add('open'); els.toggleTableTopBtn.textContent = 'Hide table editor';
+        }
+        els.dataSection.scrollIntoView({behavior:'smooth', block:'start'});
       },
       error: (err)=> log('CSV parse error: ' + err.message, 'error')
     });
   }
 
-  // Build body for each action from a row
+  // Build body
   function buildBody(actionKey, row) {
     const n = (v) => (v === '' || v === undefined || v === null) ? undefined : Number(v);
     const s = (v) => (v === undefined || v === null) ? undefined : String(v);
-    const listLicenses = (v) => {
-      if (v == null) return [];
-      const str = String(v).trim(); if (!str) return [];
-      return str.split(/[,;]/).map(x => x.trim()).filter(Boolean);
-    };
-    const phone = (v) => {
-      if (!v) return undefined; const t = String(v).trim(); if (!t) return undefined;
-      return t.startsWith('+') ? t : `+1${t}`;
-    };
+    const listLicenses = (v) => { if (v == null) return []; const str = String(v).trim(); if (!str) return []; return str.split(/[,;]/).map(x => x.trim()).filter(Boolean); };
+    const phone = (v) => { if (!v) return undefined; const t = String(v).trim(); if (!t) return undefined; return t.startsWith('+') ? t : `+1${t}`; };
 
-    const base = {
-      displayName: s(row['displayName']),
-      locationId: s(row['locationId']),
-      capacity: n(row['capacity']),
-      type: s(row['type']),
-      calling: { type: s(row['callingType']), webexCalling: { locationId: s(row['locationId']), licenses: listLicenses(row['licenseId']) } }
-    };
+    const base = { displayName: s(row['displayName']), locationId: s(row['locationId']), capacity: n(row['capacity']), type: s(row['type']),
+      calling: { type: s(row['callingType']), webexCalling: { locationId: s(row['locationId']), licenses: listLicenses(row['licenseId']) } } };
 
     if (actionKey === 'create_workspaces_ext') base.calling.webexCalling.extension = s(row['extension']);
     else if (actionKey === 'create_workspaces_phone') base.calling.webexCalling.phoneNumber = phone(row['phoneNumber']);
     else if (actionKey === 'create_workspaces_both') { base.calling.webexCalling.phoneNumber = phone(row['phoneNumber']); base.calling.webexCalling.extension = s(row['extension']); }
 
-    function prune(obj) {
-      if (Array.isArray(obj)) return obj.filter(v => v !== undefined && v !== null);
-      const out = {}; Object.keys(obj).forEach(k => { const v = obj[k]; if (v && typeof v === 'object' && !Array.isArray(v)) { const p = prune(v); if (Object.keys(p).length) out[k] = p; } else if (v !== undefined) { out[k] = v; } }); return out;
-    }
+    function prune(obj) { if (Array.isArray(obj)) return obj.filter(v => v !== undefined && v !== null); const out = {}; Object.keys(obj).forEach(k => { const v = obj[k]; if (v && typeof v === 'object' && !Array.isArray(v)) { const p = prune(v); if (Object.keys(p).length) out[k] = p; } else if (v !== undefined) { out[k] = v; } }); return out; }
     return prune(base);
   }
 
@@ -302,15 +266,14 @@
   })();
 
   // initial empty rows
-  addRow(); addRow(); addRow();
+  addRow(); addRow(); addRow(); renderTable();
 
-  // toolbar handlers
+  // handlers
   els.addRowBtn.addEventListener('click', addRow);
   els.clearRowsBtn.addEventListener('click', clearRows);
   els.pasteCsvBtn.addEventListener('click', ()=>{
     navigator.clipboard.readText().then(txt=>{
       if (!txt) return; const cols = ACTIONS[els.apiSelect.value].cols;
-      // try with header first
       const delim = txt.includes('\t') ? '\t' : ',';
       const lines = txt.replace(/\r/g,'').split('\n').filter(l=>l.length>0);
       const cells = lines.map(l=> l.split(new RegExp(delim)).map(x=>x.trim()));
@@ -321,11 +284,10 @@
       } else {
         for (let r = 0; r < cells.length; r++) { const obj = {}; cols.forEach((c,i)=> obj[c] = cells[r][i] ?? ''); rows.push(obj); }
       }
-      renderTable(); if (!els.dataSection.classList.contains('open')) els.dataSection.classList.add('open');
+      renderTable(); if (!els.dataSection.classList.contains('open')) { els.dataSection.classList.add('open'); els.toggleTableTopBtn.textContent = 'Hide table editor'; }
+      els.dataSection.scrollIntoView({behavior:'smooth', block:'start'});
     });
   });
-
-  // top upload
   els.uploadCsvTopBtn.addEventListener('click', ()=> els.csvFileTop.click());
   els.csvFileTop.addEventListener('change', (e)=> handleUpload(e.target.files[0]));
 
@@ -368,8 +330,6 @@
   }
 
   els.runBtn.addEventListener('click', run);
-  // first render
-  renderTable();
 })();
 </script>
 </body>
