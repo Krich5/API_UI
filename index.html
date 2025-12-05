@@ -2,377 +2,81 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="dark" />
-  <title>Webex API Tool</title>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <title>API Tools | Landing</title>
+  <link rel="icon" type="image/png" href="CX%20only.png" />
   <style>
-    :root {
-      --bg:#0b1020;
-      --card:#131a2a;
-      --muted:#92a0b8;
-      --fg:#e9edf5;
-      --accentA:#22d3ee;
-      --accentB:#3b82f6;
-      --input:#0e1525;
-      --border:rgba(255,255,255,.08);
+    :root{ --bg:#0b1020; --card:#131a2a; --muted:#92a0b8; --fg:#e9edf5; --accentA:#22d3ee; --accentB:#3b82f6; --input:#0e1525; --border:rgba(255,255,255,.08); }
+    *,*::before,*::after{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:flex;flex-direction:column;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,"Noto Sans"; background:radial-gradient(circle at 12% 16%, rgba(34,211,238,.12), transparent 26%), radial-gradient(circle at 82% 6%, rgba(59,130,246,.12), transparent 24%), var(--bg); color:var(--fg);}
+    main{flex:1;max-width:880px;margin:0 auto;padding:48px 16px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:26px;width:100%}
+    .card{position:relative;background:linear-gradient(145deg,rgba(46,74,142,.55),rgba(107,33,168,.5));border:1px solid transparent;border-radius:34px;padding:28px 32px;box-shadow:0 25px 60px rgba(5,10,25,.55);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);transition:box-shadow .35s ease;overflow:hidden;}
+    .card::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:inherit;
+      padding:1px;
+      background:linear-gradient(135deg,rgba(34,211,238,.7),rgba(59,130,246,.25),rgba(15,23,42,.2));
+      -webkit-mask:
+        linear-gradient(#000,#000) content-box,
+        linear-gradient(#000,#000);
+      -webkit-mask-composite:xor;
+      mask-composite:exclude;
+      opacity:.45;
+      pointer-events:none;
+      transition:opacity .3s ease;
     }
-    *, *::before, *::after { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, "Apple Color Emoji","Segoe UI Emoji"; background:var(--bg); color:var(--fg); }
-    header.banner { border-bottom:1px solid rgba(255,255,255,.06); padding:14px 18px; background:#0c1526; }
-    .navWrap { max-width:1200px; margin:0 auto; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:16px; }
-    .navWrap .left { justify-self:start; }
-    .navWrap .center { justify-self:center; text-align:center; }
-    .navWrap .right { justify-self:end; }
-    .brand { font-weight:800; letter-spacing:.2px; font-size:1.2rem; }
-    .sub { color:var(--muted); margin-top:4px; font-size:.95rem; }
-    .logo { height:40px; }
-    .btnLink { display:inline-flex; align-items:center; justify-content:center; padding:8px 14px; border-radius:12px; background:var(--input); border:1px solid var(--border); color:var(--fg); text-decoration:none; font-weight:700; }
-    main { padding:32px 0 80px; }
-    .contentWrap { max-width:1200px; margin:0 auto; padding:0 20px; display:flex; flex-direction:column; gap:24px; }
-    .card { position:relative; background:var(--card); border:1px solid var(--border); border-radius:18px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.25); overflow:hidden; }
-    .grid { display:grid; grid-template-columns:minmax(0,3fr) minmax(0,1.7fr); gap:24px; }
-    label { display:block; font-size:13px; color:var(--muted); margin:8px 0 6px; }
-    input, select { width:100%; border-radius:12px; border:1px solid var(--border); background:var(--input); color:var(--fg); padding:10px 12px; outline:none; font-size:14px; }
-    input:focus, select:focus { box-shadow:0 0 0 3px rgba(59,130,246,.25); }
-    select { cursor:pointer; }
-    .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-    .row.util { margin-top:12px; align-items:flex-start; }
-    .row.actions { margin-top:16px; }
-    .progressBlock { margin-top:18px; }
-    .btn { background:linear-gradient(135deg,var(--accentA),var(--accentB)); border:none; color:#06111d; font-weight:700; padding:10px 18px; border-radius:12px; cursor:pointer; transition:opacity .2s ease; }
-    .btn.secondary { background:var(--input); color:var(--fg); border:1px solid var(--border); }
-    .btn.ghost { background:transparent; border:1px dashed rgba(255,255,255,.2); color:var(--fg); }
-    .btn:disabled { opacity:.5; cursor:not-allowed; }
-    .hint { font-size:12px; color:var(--muted); }
-    .progress { height:10px; background:var(--input); border:1px solid var(--border); border-radius:999px; overflow:hidden; width:100%; }
-    .bar { height:100%; background:linear-gradient(90deg,var(--accentA),var(--accentB)); width:0%; transition:width .25s ease; }
-    .panelTitle { font-size:.85rem; letter-spacing:.2px; font-weight:700; color:var(--muted); margin-bottom:8px; text-transform:uppercase; }
-    .log { min-height:240px; height:100%; overflow:auto; background:var(--input); border:1px solid var(--border); border-radius:12px; padding:12px; font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; font-size:13px; white-space:pre-wrap; }
-    .collapse { padding:22px; }
-    .collapseHead { display:flex; justify-content:space-between; gap:18px; align-items:flex-start; }
-    .collapseBody { margin-top:16px; padding-top:16px; border-top:1px solid rgba(255,255,255,.08); display:none; }
-    .collapse.open .collapseBody { display:block; }
-    .collapseTitle { font-size:1.1rem; font-weight:700; margin:0; }
-    .collapseCopy { margin:4px 0 0; }
-    .sheetToolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
-    .sheetToolbar .hint { margin-left:auto; }
-    .sheetWrap { border:1px solid var(--border); border-radius:12px; overflow:auto; background:var(--input); }
-    table.sheet { width:100%; border-collapse:separate; border-spacing:0; min-width:900px; }
-    table.sheet th, table.sheet td { padding:6px 10px; border-bottom:1px solid rgba(255,255,255,.08); border-right:1px solid rgba(255,255,255,.06); }
-    table.sheet th { position:sticky; top:0; background:#0f172a; text-align:left; font-weight:700; color:#cbd5e1; z-index:1; font-size:12px; }
-    table.sheet tr:last-child td { border-bottom:none; }
-    table.sheet th:last-child, table.sheet td:last-child { border-right:none; }
-    table.sheet td input { width:100%; background:transparent; border:none; color:var(--fg); outline:none; padding:0; height:28px; line-height:1.2; font-size:13px; }
-    .hiddenFile { display:none; }
-    @media (max-width:1024px) {
-      .navWrap { grid-template-columns:1fr; text-align:center; }
-      .navWrap .left,
-      .navWrap .right { justify-self:center; }
-      .grid { grid-template-columns:1fr; }
-    }
-    @media (max-width:640px) {
-      .row { flex-direction:column; align-items:stretch; }
-      .btnLink { width:100%; }
-      .collapse { padding:18px; }
-    }
+    .card:hover::before,
+    .card:focus-within::before{opacity:.95;}
+    .card:focus-within{box-shadow:0 35px 80px rgba(34,211,238,.35);}
+    .logoHero{display:flex;justify-content:center;align-items:center}
+    .logoHero img{height:82px;width:auto;max-width:none;display:block}
+    h1{margin:0 0 .5rem;font-size:1.8rem;text-align:center;letter-spacing:.2px}
+    .lead{color:var(--muted);margin:0 0 1.4rem;text-align:center;line-height:1.6}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-top:10px;width:100%}
+    .pillLink{color:inherit;text-decoration:none;}
+    .pill{background:rgba(8,12,26,.55);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px;min-height:130px;transition:border-color .2s ease, transform .2s ease, box-shadow .2s ease}
+    .pill h3{margin:0;font-size:1.1rem}
+    .pill p{margin:0;color:var(--muted);line-height:1.45}
+    .pill:hover,.pill:focus-visible{border-color:rgba(255,255,255,.18);transform:translateY(-1px);box-shadow:0 12px 32px rgba(0,0,0,.32);}
+    .btn{position:relative;overflow:hidden;background:linear-gradient(135deg,var(--accentA),var(--accentB));border:none;color:#06111d; font-weight:800;padding:10px 16px;border-radius:12px;cursor:pointer;transition:transform .18s ease, box-shadow .18s ease;text-decoration:none;text-align:center;display:inline-block}
+    .btn:focus-visible{outline:3px solid rgba(34,211,238,.6); outline-offset:2px}
+    .btn:active{transform:translateY(1px);box-shadow:0 10px 25px rgba(34,211,238,.28)}
+    .ghost{background:transparent;color:var(--fg);border:1px solid var(--border);}
+    footer{color:#93a3ba;text-align:center;font-size:.9rem;padding:18px 0;margin-top:auto}
+    .topLinks{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
-  <header class="banner">
-    <div class="navWrap">
-      <div class="left">
-        <a class="btnLink" href="https://developer.webex.com/docs/api/v1" target="_blank" rel="noreferrer">Webex API docs</a>
-      </div>
-      <div class="center">
-        <div class="brand">Webex API Tool</div>
-        <div class="sub">Choose an action. Either upload a CSV or edit in an on-screen table, then run.</div>
-      </div>
-      <div class="right">
-        <img src="CX%20Advanced%20Solutions_Smaller_white.png" alt="Logo" class="logo" />
-      </div>
-    </div>
-  </header>
-
   <main>
-    <div class="contentWrap">
-      <section class="card">
-        <div class="grid">
-          <div>
-            <label>API Action</label>
-            <select id="apiSelect"></select>
-
-            <label>Bearer Token</label>
-            <input id="token" type="password" placeholder="Paste your Bearer token" autocomplete="off" />
-            <div class="hint">Token is not saved; it lives only while the page is open.</div>
-
-            <div class="row util">
-              <button id="uploadCsvTopBtn" class="btn ghost">Upload CSV</button>
-              <input id="csvFileTop" type="file" accept=".csv" class="hiddenFile" />
-              <button id="toggleTableTopBtn" class="btn secondary">Open table editor</button>
-              <span class="hint">Paste directly from Excel (headers optional) or upload a CSV.</span>
-            </div>
-
-            <div class="row actions">
-              <button id="runBtn" class="btn">Run</button>
-              <button id="cancelBtn" class="btn secondary" disabled>Cancel</button>
-              <button id="downloadErrorsBtn" class="btn secondary" disabled>Download errors CSV</button>
-            </div>
-
-            <div class="progressBlock">
-              <div class="progress"><div id="bar" class="bar"></div></div>
-              <div id="status" class="hint" style="margin-top:8px;">Idle</div>
-            </div>
-          </div>
-
-          <div>
-            <div class="panelTitle">Console</div>
-            <div id="log" class="log" aria-live="polite"></div>
-          </div>
-        </div>
-      </section>
-
-      <section id="dataSection" class="card collapse">
-        <div class="collapseHead">
-          <div>
-            <div class="collapseTitle">Table editor</div>
-            <p class="sub collapseCopy">Add or paste workspace rows without leaving this page.</p>
-          </div>
-        </div>
-        <div class="collapseBody">
-          <div class="sheetToolbar">
-            <button id="addRowBtn" class="btn secondary">Add row</button>
-            <button id="clearRowsBtn" class="btn secondary">Clear rows</button>
-            <button id="pasteCsvBtn" class="btn ghost">Paste from clipboard</button>
-            <span class="hint" id="colHint"></span>
-          </div>
-          <div class="sheetWrap">
-            <table class="sheet" id="sheet"></table>
-          </div>
-        </div>
-      </section>
+    <div class="logoHero">
+      <img src="CX%20Advanced%20Solutions_Smaller_white.png" alt="CX Advanced Solutions" />
     </div>
+    <section class="card" data-magic-bento>
+      <h1>Webex API Tools</h1>
+      <p class="lead">Pick your workspace below. You can swap between Webex Calling and Webex Contact Center anytime.</p>
+
+      <div class="grid">
+        <a class="pillLink" href="WxC.html">
+          <div class="pill" tabindex="0">
+            <h3>Webex Calling (WxC)</h3>
+            <p>Bulk workspace creation, phone numbers, and extensions for calling automation.</p>
+            <span class="btn">Open WxC Tools</span>
+          </div>
+        </a>
+        <a class="pillLink" href="WxCC.html">
+          <div class="pill" tabindex="0">
+            <h3>Webex Contact Center (WxCC)</h3>
+            <p>Agent, queue, and routing utilities. New WxCC workflows live here.</p>
+            <span class="btn">Open WxCC Tools</span>
+          </div>
+        </a>
+      </div>
+    </section>
   </main>
 
-<script>
-(function() {
-  const els = {
-    apiSelect: document.getElementById('apiSelect'),
-    token: document.getElementById('token'),
-    uploadCsvTopBtn: document.getElementById('uploadCsvTopBtn'),
-    csvFileTop: document.getElementById('csvFileTop'),
-    toggleTableTopBtn: document.getElementById('toggleTableTopBtn'),
-    addRowBtn: document.getElementById('addRowBtn'),
-    clearRowsBtn: document.getElementById('clearRowsBtn'),
-    pasteCsvBtn: document.getElementById('pasteCsvBtn'),
-    runBtn: document.getElementById('runBtn'),
-    cancelBtn: document.getElementById('cancelBtn'),
-    downloadErrorsBtn: document.getElementById('downloadErrorsBtn'),
-    bar: document.getElementById('bar'),
-    status: document.getElementById('status'),
-    log: document.getElementById('log'),
-    sheet: document.getElementById('sheet'),
-    colHint: document.getElementById('colHint'),
-    dataSection: document.getElementById('dataSection'),
-  };
 
-  const BASE_URL = 'https://webexapis.com';
-  const CONCURRENCY = 1; // sequential for clearer progress
-  const ACTIONS = {
-    create_workspaces_ext:   { endpoint: '/v1/workspaces', method: 'POST', label: 'Create Workspaces Using Extension', cols: ['displayName','locationId','capacity','type','callingType','licenseId','extension'] },
-    create_workspaces_phone: { endpoint: '/v1/workspaces', method: 'POST', label: 'Create Workspaces Using Phone Number', cols: ['displayName','locationId','capacity','type','callingType','licenseId','phoneNumber'] },
-    create_workspaces_both:  { endpoint: '/v1/workspaces', method: 'POST', label: 'Create Workspaces Using Phone Number and Extension', cols: ['displayName','locationId','capacity','type','callingType','licenseId','phoneNumber','extension'] },
-  };
-
-  let rows = [];
-
-  function log(msg, type) {
-    const line = document.createElement('div');
-    if (type === 'error') line.style.color = '#f87171';
-    if (type === 'warn') line.style.color = '#fbbf24';
-    line.textContent = msg; els.log.appendChild(line); els.log.scrollTop = els.log.scrollHeight;
-  }
-
-  function setProgress(done, total) {
-    const pct = total ? Math.round((done/total) * 100) : 0;
-    els.bar.style.width = pct + '%'; els.status.textContent = `${done}/${total} (${pct}%)`;
-  }
-
-  // Toggle table editor from the top button
-  els.toggleTableTopBtn.addEventListener('click', () => {
-    els.dataSection.classList.toggle('open');
-    els.toggleTableTopBtn.textContent = els.dataSection.classList.contains('open') ? 'Hide table editor' : 'Open table editor';
-    if (els.dataSection.classList.contains('open')) {
-      els.dataSection.scrollIntoView({behavior:'smooth', block:'start'});
-    }
-  });
-
-  // ---- Table rendering ----
-  function renderTable() {
-    const cols = ACTIONS[els.apiSelect.value].cols;
-    els.colHint.textContent = `Columns: ${cols.join(', ')}`;
-
-    const thead = `<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}<th>✕</th></tr></thead>`;
-    const tbody = `<tbody>${rows.map((r,ri)=>`<tr>${cols.map(c=>`<td><input data-ri="${ri}" data-key="${c}" value="${r[c]??''}"/></td>`).join('')}<td><button class="btn secondary" data-del="${ri}">Delete</button></td></tr>`).join('')}</tbody>`;
-    els.sheet.innerHTML = thead + tbody;
-
-    // inputs
-    els.sheet.querySelectorAll('input[data-ri]').forEach(inp=>{
-      inp.addEventListener('input', (e)=>{
-        const ri = Number(e.target.getAttribute('data-ri'));
-        const key = e.target.getAttribute('data-key'); rows[ri][key] = e.target.value;
-      });
-      // Excel-style paste
-      inp.addEventListener('paste', (e)=>{
-        const text = e.clipboardData?.getData('text');
-        if (!text || (!text.includes('\t') && !text.includes('\n'))) return; // normal paste
-        e.preventDefault();
-        const startRi = Number(e.target.getAttribute('data-ri'));
-        const cols = ACTIONS[els.apiSelect.value].cols;
-        const startKey = e.target.getAttribute('data-key');
-        const startCi = cols.indexOf(startKey);
-        const delim = text.includes('\t') ? '\t' : ',';
-        const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.length>0);
-        const cells = lines.map(l=> l.split(new RegExp(delim)).map(x=>x.trim()));
-        const header = cells[0];
-        const headerMatches = header.every(h => cols.includes(h));
-        if (headerMatches) {
-          const map = header.map(h => cols.indexOf(h));
-          for (let r = 1; r < cells.length; r++) {
-            const rowIdx = startRi + r - 1; if (!rows[rowIdx]) { const obj = {}; cols.forEach(c=>obj[c]=''); rows[rowIdx]=obj; }
-            map.forEach((ci,i)=>{ if (ci>=0) rows[rowIdx][cols[ci]] = cells[r][i] ?? ''; });
-          }
-        } else {
-          for (let r = 0; r < cells.length; r++) {
-            const rowIdx = startRi + r; if (!rows[rowIdx]) { const obj = {}; cols.forEach(c=>obj[c]=''); rows[rowIdx]=obj; }
-            for (let c = 0; c < cells[r].length; c++) { const colIdx = startCi + c; if (colIdx < cols.length) rows[rowIdx][cols[colIdx]] = cells[r][c] ?? ''; }
-          }
-        }
-        renderTable();
-      });
-    });
-
-    els.sheet.querySelectorAll('button[data-del]').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{ const ri = Number(e.target.getAttribute('data-del')); rows.splice(ri,1); renderTable(); });
-    });
-  }
-
-  function addRow() { const cols = ACTIONS[els.apiSelect.value].cols; const obj = {}; cols.forEach(c=>obj[c]=''); rows.push(obj); renderTable(); }
-  function clearRows() { rows = []; renderTable(); }
-
-  function handleUpload(file) {
-    if (!file) return; const cols = ACTIONS[els.apiSelect.value].cols;
-    Papa.parse(file, { header: true, skipEmptyLines: true,
-      complete: (res)=>{
-        const incoming = res.data.map(d=>{ const obj = {}; cols.forEach(c=> obj[c] = d[c] ?? ''); return obj; });
-        rows = rows.concat(incoming); renderTable();
-        log(`Uploaded ${incoming.length} row(s) from CSV.`);
-        if (!els.dataSection.classList.contains('open')) {
-          els.dataSection.classList.add('open'); els.toggleTableTopBtn.textContent = 'Hide table editor';
-        }
-        els.dataSection.scrollIntoView({behavior:'smooth', block:'start'});
-      },
-      error: (err)=> log('CSV parse error: ' + err.message, 'error')
-    });
-  }
-
-  // Build body
-  function buildBody(actionKey, row) {
-    const n = (v) => (v === '' || v === undefined || v === null) ? undefined : Number(v);
-    const s = (v) => (v === undefined || v === null) ? undefined : String(v);
-    const listLicenses = (v) => { if (v == null) return []; const str = String(v).trim(); if (!str) return []; return str.split(/[,;]/).map(x => x.trim()).filter(Boolean); };
-    const phone = (v) => { if (!v) return undefined; const t = String(v).trim(); if (!t) return undefined; return t.startsWith('+') ? t : `+1${t}`; };
-
-    const base = { displayName: s(row['displayName']), locationId: s(row['locationId']), capacity: n(row['capacity']), type: s(row['type']),
-      calling: { type: s(row['callingType']), webexCalling: { locationId: s(row['locationId']), licenses: listLicenses(row['licenseId']) } } };
-
-    if (actionKey === 'create_workspaces_ext') base.calling.webexCalling.extension = s(row['extension']);
-    else if (actionKey === 'create_workspaces_phone') base.calling.webexCalling.phoneNumber = phone(row['phoneNumber']);
-    else if (actionKey === 'create_workspaces_both') { base.calling.webexCalling.phoneNumber = phone(row['phoneNumber']); base.calling.webexCalling.extension = s(row['extension']); }
-
-    function prune(obj) { if (Array.isArray(obj)) return obj.filter(v => v !== undefined && v !== null); const out = {}; Object.keys(obj).forEach(k => { const v = obj[k]; if (v && typeof v === 'object' && !Array.isArray(v)) { const p = prune(v); if (Object.keys(p).length) out[k] = p; } else if (v !== undefined) { out[k] = v; } }); return out; }
-    return prune(base);
-  }
-
-  function downloadCSV(rowsArr, name = 'errors.csv') {
-    if (!rowsArr.length) return; const headers = Array.from(new Set(rowsArr.flatMap(r => Object.keys(r))));
-    const csv = [headers.join(',')].concat(rowsArr.map(r => headers.map(h => JSON.stringify(r[h] ?? '').replace(/^\"|\"$/g,'')).join(','))).join('\n');
-    const blob = new Blob([csv], {type:'text/csv'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
-  }
-
-  (function initSelect(){
-    const sel = els.apiSelect; sel.innerHTML = '';
-    Object.entries(ACTIONS).forEach(([key, cfg]) => { const opt = document.createElement('option'); opt.value = key; opt.textContent = cfg.label; sel.appendChild(opt); });
-    sel.value = 'create_workspaces_ext'; sel.addEventListener('change', ()=>{ rows = []; addRow(); });
-  })();
-
-  // initial empty rows
-  addRow(); addRow(); addRow(); renderTable();
-
-  // handlers
-  els.addRowBtn.addEventListener('click', addRow);
-  els.clearRowsBtn.addEventListener('click', clearRows);
-  els.pasteCsvBtn.addEventListener('click', ()=>{
-    navigator.clipboard.readText().then(txt=>{
-      if (!txt) return; const cols = ACTIONS[els.apiSelect.value].cols;
-      const delim = txt.includes('\t') ? '\t' : ',';
-      const lines = txt.replace(/\r/g,'').split('\n').filter(l=>l.length>0);
-      const cells = lines.map(l=> l.split(new RegExp(delim)).map(x=>x.trim()));
-      const header = cells[0]; const headerMatches = header.every(h => cols.includes(h));
-      if (headerMatches) {
-        const map = header.map(h => cols.indexOf(h));
-        for (let r = 1; r < cells.length; r++) { const obj = {}; cols.forEach(c=>obj[c]=''); map.forEach((ci,i)=>{ if (ci>=0) obj[cols[ci]] = cells[r][i] ?? ''; }); rows.push(obj); }
-      } else {
-        for (let r = 0; r < cells.length; r++) { const obj = {}; cols.forEach((c,i)=> obj[c] = cells[r][i] ?? ''); rows.push(obj); }
-      }
-      renderTable(); if (!els.dataSection.classList.contains('open')) { els.dataSection.classList.add('open'); els.toggleTableTopBtn.textContent = 'Hide table editor'; }
-      els.dataSection.scrollIntoView({behavior:'smooth', block:'start'});
-    });
-  });
-  els.uploadCsvTopBtn.addEventListener('click', ()=> els.csvFileTop.click());
-  els.csvFileTop.addEventListener('change', (e)=> handleUpload(e.target.files[0]));
-
-  async function sendRow({row, idx, cfg}) {
-    const { endpoint, method, token, actionKey } = cfg; const url = BASE_URL + endpoint;
-    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
-    const bodyObj = buildBody(actionKey, row); const body = JSON.stringify(bodyObj);
-    const res = await fetch(url, { method, headers, body }); const text = await res.text();
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`); return text;
-  }
-
-  function getRowsFromTable() { return rows.map(r=>({ ...r })); }
-
-  async function run() {
-    let errors = []; els.runBtn.disabled = true; els.cancelBtn.disabled = false; els.downloadErrorsBtn.disabled = true;
-    els.log.textContent = ''; setProgress(0, 0);
-
-    try {
-      const actionKey = els.apiSelect.value; const action = ACTIONS[actionKey];
-      const token = els.token.value.trim(); if (!token) throw new Error('Bearer token required.');
-      const data = getRowsFromTable(); if (!data.length) throw new Error('No rows to process.');
-
-      const total = data.length; setProgress(0, total); log(`Loaded ${total} row(s).`);
-
-      let done = 0; const queue = data.map((row, idx) => ({row, idx}));
-      async function worker() {
-        while (queue.length) {
-          const item = queue.shift(); if (!item) break;
-          try { await sendRow({ row: item.row, idx: item.idx, cfg: { ...action, token, actionKey } }); log(`Row ${item.idx+1}: ✓ success`); }
-          catch (e) { log(`Row ${item.idx+1}: ✗ ${e.message}`, 'error'); errors.push({ row: item.idx+1, error: e.message, ...item.row }); }
-          finally { done++; setProgress(done, total); }
-        }
-      }
-      await Promise.all(Array.from({length: 1}, worker));
-
-      if (errors.length) { log(`Finished with ${errors.length} error(s).`, 'error'); els.downloadErrorsBtn.disabled = false; els.downloadErrorsBtn.onclick = ()=>downloadCSV(errors); }
-      else { log('All done successfully.'); }
-    } catch (e) { log(String(e.message || e), 'error'); }
-    finally { els.runBtn.disabled = false; els.cancelBtn.disabled = true; }
-  }
-
-  els.runBtn.addEventListener('click', run);
-})();
-</script>
 </body>
 </html>
