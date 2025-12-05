@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>WxC Tools</title>
+  <link rel="icon" type="image/png" href="CX%20only.png" />
+  <style>
+    :root {
+      --bg:#0b1020;
+      --card:#131a2a;
+      --panel:#0f172a;
+      --muted:#92a0b8;
+      --fg:#e9edf5;
+      --accentA:#22d3ee;
+      --accentB:#3b82f6;
+      --border:rgba(255,255,255,.08);
+    }
+    *, *::before, *::after { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:var(--bg); color:var(--fg); }
+    header { padding:16px 20px; border-bottom:1px solid var(--border); background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0)); }
+    .wrap { max-width:1100px; margin:0 auto; padding:0 18px; }
+    .nav { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .brand { font-weight:800; font-size:1.1rem; letter-spacing:.25px; }
+    .sub { color:var(--muted); margin-top:4px; }
+    .btn { display:inline-flex; align-items:center; gap:8px; padding:9px 14px; border-radius:12px; font-weight:700; border:1px solid var(--border); background:var(--card); color:var(--fg); text-decoration:none; cursor:pointer; }
+    .btn.primary { background:linear-gradient(135deg,var(--accentA),var(--accentB)); color:#06111d; border:none; }
+    .authLink.authed { background:linear-gradient(135deg,var(--accentA),var(--accentB)); color:#06111d; border:none; }
+    .orgPane { width:calc(100% - 25px); max-width:1060px; margin:12px auto 0; padding:12px 16px; display:flex; justify-content:center; align-items:center; gap:8px; background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 12px 24px rgba(0,0,0,.24); }
+    .orgPane .orgTag { font-weight:800; color:var(--fg); font-size:15px; }
+    .authFab { position:fixed; right:20px; bottom:20px; z-index:999; }
+    main { padding:32px 0 60px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow:0 16px 30px rgba(0,0,0,.3); }
+    h1 { margin:0 0 8px; font-size:1.8rem; letter-spacing:.2px; }
+    p { margin:0; color:var(--muted); line-height:1.5; }
+    .lead { color:var(--muted); margin:0 0 12px; }
+    .actions { margin-top:12px; display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; }
+    .actionCard { position:relative; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px; border-radius:14px; border:1px solid var(--border); background:linear-gradient(145deg, rgba(46,74,142,.4), rgba(107,33,168,.35)); color:var(--fg); text-decoration:none; box-shadow:0 12px 28px rgba(0,0,0,.28); transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+    .actionCard:hover, .actionCard:focus-visible { transform:translateY(-1px); box-shadow:0 16px 34px rgba(0,0,0,.32); border-color:rgba(255,255,255,.18); outline:none; }
+    .actionTitle { font-weight:800; font-size:1.05rem; letter-spacing:.2px; margin-bottom:4px; }
+    .pillBtn { background:linear-gradient(135deg,var(--accentA),var(--accentB)); color:#06111d; padding:10px 14px; border-radius:12px; font-weight:800; white-space:nowrap; }
+    @media (max-width:900px) { .nav { justify-content:flex-start; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap nav">
+      <div>
+        <div class="brand">Webex Calling (WxC)</div>
+        <div class="sub"></div>
+      </div>
+      <div class="row">
+        <a class="btn" href="index.html" aria-label="Home" title="Home" style="gap:6px; align-items:center;">
+          ←
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;">
+            <path d="M3 11.5 12 4l9 7.5"/>
+            <path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/>
+            <path d="M10 21v-6h4v6"/>
+          </svg>
+        </a>
+        <a class="btn primary" href="https://developer.webex.com/calling/docs/webex-calling-overview" target="_blank" rel="noreferrer">Webex API docs</a>
+      </div>
+    </div>
+  </header>
+  <div class="orgPane">
+    <div class="orgTag" id="orgTag">Not authenticated</div>
+  </div>
+
+  <main>
+    <div class="wrap">
+      <section class="card">
+        <h1>WxC Tools</h1>
+        <p class="lead">Pick an API to launch.</p>
+        <div class="actions">
+          <a class="actionCard" href="WxC-workspaces.html">
+            <div>
+              <div class="actionTitle">Create Workspaces</div>
+              <p>Bulk workspace creation with extensions and phone numbers for Webex Calling.</p>
+            </div>
+            <span class="pillBtn">Open</span>
+          </a>
+        </div>
+      </section>
+    </div>
+  </main>
+  <button class="btn authLink authFab" aria-label="Authenticate">Authenticate</button>
+  <script>
+    (function initAuthModal(){
+      if (document.getElementById('authModal')) return;
+      const style = document.createElement('style');
+      style.textContent = `
+        .authModalOverlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:9999;padding:16px;}
+        .authModalOverlay.open{display:flex;}
+        .authCard{width:100%;max-width:520px;background:#131a2a;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px;box-shadow:0 18px 36px rgba(0,0,0,.45);position:relative;}
+        .authCard h2{margin:0 0 8px;font-size:1.2rem;}
+        .authCard p{margin:0 0 12px;color:#92a0b8;line-height:1.4;}
+        .authCard label{display:block;font-size:13px;color:#92a0b8;margin:10px 0 6px;}
+        .authCard input{width:100%;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:#0e1525;color:#e9edf5;padding:10px 12px;font-size:14px;}
+        .authCard input:focus{outline:none;box-shadow:0 0 0 3px rgba(59,130,246,.25);}
+        .authCard .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:14px;}
+        .authCard .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 14px;border-radius:12px;font-weight:700;border:1px solid rgba(255,255,255,.08);background:#0e1525;color:#e9edf5;cursor:pointer;text-decoration:none;}
+        .authCard .btn.primary{background:linear-gradient(135deg,#22d3ee,#3b82f6);color:#06111d;border:none;}
+        .authClose{position:absolute;right:10px;top:10px;background:transparent;border:none;color:#92a0b8;font-size:18px;cursor:pointer;}
+        .authStatus{margin-top:8px;font-size:13px;color:#92a0b8;}
+      `;
+      document.head.appendChild(style);
+
+      const overlay = document.createElement('div');
+      overlay.className = 'authModalOverlay';
+      overlay.id = 'authModal';
+      overlay.innerHTML = `
+        <div class="authCard">
+          <button class="authClose" aria-label="Close">×</button>
+          <h2>Authenticate</h2>
+          <p>Paste your Bearer token and (if needed) Org ID. Saved locally for all tools.</p>
+          <label for="authBearer">Bearer token</label>
+          <input id="authBearer" type="password" autocomplete="off" placeholder="Paste Bearer token" />
+          <label for="authOrg">Org ID (optional)</label>
+          <input id="authOrg" type="text" autocomplete="off" placeholder="Paste Org ID" />
+          <div class="actions">
+            <a class="btn" href="https://developer.webex.com/docs/api/getting-started" target="_blank" rel="noreferrer">Get token</a>
+            <button class="btn primary" id="authSave">Save</button>
+          </div>
+          <div class="authStatus" id="authStatus"></div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+
+      const bearerEl = overlay.querySelector('#authBearer');
+      const orgEl = overlay.querySelector('#authOrg');
+      const statusEl = overlay.querySelector('#authStatus');
+      const closeBtn = overlay.querySelector('.authClose');
+      const saveBtn = overlay.querySelector('#authSave');
+      const KEYS = { bearer:'authBearer', org:'authOrg', orgName:'authOrgName' };
+
+      const populate = ()=> {
+        bearerEl.value = localStorage.getItem(KEYS.bearer) || '';
+        orgEl.value = localStorage.getItem(KEYS.org) || '';
+        statusEl.textContent = localStorage.getItem(KEYS.orgName) ? `Org: ${localStorage.getItem(KEYS.orgName)}` : '';
+      };
+
+      const fetchOrgName = async (bearer, orgId) => {
+        try {
+          const res = await fetch(`https://webexapis.com/v1/organizations/${encodeURIComponent(orgId)}`, { headers:{Authorization:`Bearer ${bearer}`}});
+          const data = await res.json();
+          return data.displayName || data.name || data.organization?.displayName || data.organization?.name || orgId;
+        } catch { return ''; }
+      };
+
+      saveBtn.addEventListener('click', async ()=>{
+        const b = bearerEl.value.trim();
+        const o = orgEl.value.trim();
+        localStorage.setItem(KEYS.bearer, b);
+        localStorage.setItem(KEYS.org, o);
+        statusEl.textContent = 'Saved';
+        if (b && o) {
+          statusEl.textContent = 'Looking up org...';
+          const name = await fetchOrgName(b, o);
+          if (name) {
+            localStorage.setItem(KEYS.orgName, name);
+            statusEl.textContent = `Saved — Org: ${name}`;
+          } else {
+            statusEl.textContent = 'Saved (org lookup failed)';
+          }
+        }
+        // update header indicators
+        updateAuthIndicators();
+        setTimeout(()=>{ overlay.classList.remove('open'); }, 1200);
+      });
+
+      const close = ()=> overlay.classList.remove('open');
+      closeBtn.addEventListener('click', close);
+      overlay.addEventListener('click',(e)=>{ if (e.target === overlay) close(); });
+      window.addEventListener('keydown',(e)=>{ if (e.key === 'Escape') close(); });
+
+      const open = ()=> { populate(); overlay.classList.add('open'); };
+      document.querySelectorAll('.authLink').forEach(el=>{
+        el.addEventListener('click',(e)=>{ e.preventDefault(); open(); });
+      });
+    })();
+
+    function updateAuthIndicators() {
+      const b = localStorage.getItem('authBearer') || '';
+      const org = localStorage.getItem('authOrgName') || localStorage.getItem('authOrg') || '';
+      document.querySelectorAll('.authLink').forEach(el=>{
+        if (b) {
+          el.classList.add('authed');
+          el.textContent = 'Authenticated';
+        } else {
+          el.classList.remove('authed');
+          el.textContent = 'Authenticate';
+        }
+      });
+      const tag = document.getElementById('orgTag');
+      if (tag) tag.textContent = org ? `Org: ${org}` : 'Not authenticated';
+    }
+    updateAuthIndicators();
+  </script>
+</body>
+</html>

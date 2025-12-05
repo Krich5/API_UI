@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WxCC-EPOCH Time</title>
+  <link rel="icon" type="image/png" href="CX%20only.png" />
+  <style>
+    :root {
+      --bg:#0b1020;
+      --card:#131a2a;
+      --muted:#92a0b8;
+      --text:#e9edf5;
+      --accentA:#22d3ee;
+      --accentB:#3b82f6;
+      --input:#0e1525;
+      --border:rgba(255,255,255,.08);
+      --radius:18px;
+      --shadow:0 10px 30px rgba(0,0,0,.25);
+    }
+    *, *::before, *::after { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:var(--text); }
+    header.banner { border-bottom:1px solid var(--border); padding:16px 20px; background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0)); }
+    .wrap { max-width:1100px; margin:0 auto; padding:0 18px; }
+    .nav { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .brand { font-weight:800; font-size:1.1rem; letter-spacing:.25px; }
+    .sub { display:none; }
+    .btn { display:inline-flex; align-items:center; gap:8px; padding:9px 14px; border-radius:12px; font-weight:700; border:1px solid var(--border); background:var(--card); color:#e9edf5; text-decoration:none; cursor:pointer; }
+    .btn.primary { background:linear-gradient(135deg,var(--accentA),var(--accentB)); color:#06111d; border:none; }
+    .authLink.authed { background:linear-gradient(135deg,var(--accentA),var(--accentB)); color:#06111d; border:none; }
+    .orgPane { width:calc(100% - 25px); max-width:1060px; margin:12px auto 0; padding:12px 16px; display:flex; justify-content:center; align-items:center; gap:8px; background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 12px 24px rgba(0,0,0,.24); }
+    .orgPane .orgTag { font-weight:800; color:var(--fg); font-size:15px; }
+    .authFab { position:fixed; right:20px; bottom:20px; z-index:999; }
+
+    main { padding:32px 0 80px; }
+    .contentWrap { width:calc(100% - 24px); max-width:1100px; margin:0 auto; padding:0 12px; display:flex; flex-direction:column; gap:16px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(360px,1fr)); gap:16px; width:100%; }
+
+    .card { position:relative; background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); width:100%; max-width:1100px; margin:0 auto; }
+    .section-title { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; font-size:15px; letter-spacing:.02em; color:var(--muted); text-transform:uppercase; }
+    .org-title { margin:4px 0 10px; font-size:18px; font-weight:700; color:var(--text); letter-spacing:.01em; }
+    .epoch-display { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); }
+    .epoch-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); }
+    .epoch-label { font-size:14px; color:var(--muted); }
+    .epoch-value { font-variant-numeric:tabular-nums; font-weight:600; font-size:26px; letter-spacing:0.03em; }
+    .range-bar { margin-top:14px; display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content:space-between; }
+    .range-group { display:flex; flex-direction:column; gap:8px; }
+    .fetch-group { display:flex; align-items:flex-end; gap:10px; }
+    .search-row { margin-top:12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+    .toggle-note { font-size:12px; color:var(--muted); }
+    .utilityBar { display:flex; align-items:center; justify-content:flex-end; gap:10px; margin:4px 0 2px; }
+    .search-toggle { border:1px solid var(--border); background:var(--input); color:var(--text); padding:8px 12px; border-radius:12px; cursor:pointer; font-weight:700; display:inline-flex; align-items:center; gap:8px; box-shadow:var(--shadow); }
+    .search-toggle .dot { width:10px; height:10px; border-radius:999px; background:var(--muted); transition:background-color .2s ease, transform .2s ease; }
+    .search-toggle.active { background:linear-gradient(135deg,var(--accentA),var(--accentB)); color:#06111d; border-color:rgba(59,130,246,0.9); }
+    .search-toggle.active .dot { background:#06111d; transform:scale(1.05); }
+
+    .controls { display:grid; gap:10px; }
+    .control-row { display:grid; gap:8px; }
+    .control-label { color:var(--muted); font-size:14px; letter-spacing:0.01em; }
+    .button-row { display:flex; flex-wrap:wrap; gap:8px; }
+
+    button.action { background:linear-gradient(135deg,var(--accentA),var(--accentB)); border:none; color:#06111d; padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:700; letter-spacing:0.01em; transition:opacity .15s ease; }
+    button.action.secondary { background:var(--input); color:var(--text); border:1px solid var(--border); }
+    button.action:hover { opacity:.9; }
+    button.action:active { opacity:.8; }
+    .range-btn.active { background:linear-gradient(135deg,var(--accentA),var(--accentB)) !important; color:#06111d !important; border:1px solid rgba(59,130,246,0.9) !important; box-shadow:0 10px 26px rgba(0,0,0,.25),0 0 0 3px rgba(59,130,246,.22); font-weight:700; letter-spacing:.01em; }
+
+    input[type="number"], input[type="datetime-local"], input[type="text"], input[type="password"], select {
+      background:var(--input);
+      border:1px solid var(--border);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:10px;
+      font-size:15px;
+      min-width:140px;
+      appearance:none;
+      -webkit-appearance:none;
+      -moz-appearance:none;
+    }
+    select { cursor:pointer; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 14px) calc(50% - 3px), calc(100% - 8px) calc(50% - 3px); background-size: 6px 6px, 6px 6px; background-repeat:no-repeat; padding-right:28px; }
+    input:focus, textarea:focus { outline:2px solid rgba(59,130,246,.25); }
+    textarea { width:100%; min-height:240px; background:var(--input); border:1px solid var(--border); color:var(--text); padding:10px 12px; border-radius:10px; font-size:15px; resize:vertical; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace; line-height:1.4; }
+
+    .copy-btn { background:rgba(34,211,238,0.12); border:1px solid rgba(34,211,238,0.4); color:var(--text); border-radius:10px; padding:8px 10px; cursor:pointer; font-weight:600; }
+
+    .meta { display:flex; flex-wrap:wrap; gap:8px 14px; color:var(--muted); font-size:14px; }
+    .tag { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); padding:8px 10px; border-radius:10px; transition:background-color .2s ease,border-color .2s ease,box-shadow .2s ease; }
+
+    .response { background:var(--input); border:1px solid var(--border); border-radius:10px; padding:12px; color:var(--text); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace; white-space:pre-wrap; min-height:180px; }
+    .field-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; }
+
+    .collapseHead { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+    .collapseBody { border-top:1px solid rgba(255,255,255,.08); margin-top:12px; padding-top:12px; display:block; }
+
+    .toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; }
+    .toolbar-left { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .toolbar-right { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .toolbar-right input { flex:1; min-width:220px; }
+    #presetSelect { min-width:260px; }
+    .icon-btn { background:var(--input); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:8px 14px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; min-width:80px; }
+    .icon-btn svg { width:16px; height:16px; }
+    .copy-stack { display:flex; flex-direction:column; align-items:flex-end; gap:6px; margin-top:8px; }
+    .copy-label { font-size:12px; color:var(--muted); }
+    .response-wrap { position:relative; }
+    .response-wrap .response { padding-right:48px; }
+    .copy-fab { position:absolute; top:18px; right:0.1px; padding:0; background:transparent; border:none; border-radius:6px; width:32px; height:32px; min-width:32px; display:flex; align-items:center; justify-content:center; color:var(--muted); }
+    .copy-fab:hover { color:var(--text); background:rgba(255,255,255,0.05); }
+    .divider { border-top:1px solid rgba(255,255,255,.08); margin:12px 0; }
+    .auth-help { margin-top:6px; text-align:right; }
+    .auth-help a { color:var(--text); text-decoration:underline; font-weight:600; }
+
+    @media (max-width:1024px) { .navWrap { grid-template-columns:1fr; text-align:center; } .navWrap .left, .navWrap .right { justify-self:center; } }
+  </style>
+</head>
+<body>
+  <header class="banner">
+    <div class="wrap nav">
+      <div>
+        <div class="brand">WxCC - EPOCH Time</div>
+      </div>
+      <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <a class="btn" href="index.html" aria-label="Home" title="Home" style="gap:6px; align-items:center;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;">
+            <path d="M3 11.5 12 4l9 7.5"/>
+            <path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/>
+            <path d="M10 21v-6h4v6"/>
+          </svg>
+        </a>
+        <a class="btn" href="WxCC.html">← Back to WxCC tools</a>
+        <a class="btn primary" href="https://developer.webex.com/webex-contact-center/docs/webex-contact-center" target="_blank" rel="noreferrer">Webex CC API Docs</a>
+      </div>
+    </div>
+  </header>
+  <div class="orgPane">
+    <div class="orgTag" id="orgTag">Not authenticated</div>
+  </div>
+
+  <main>
+    <div class="contentWrap">
+      <div class="grid">
+        <section class="card">
+          <div class="section-title">
+            <span>Epoch window</span>
+          </div>
+          <div class="epoch-display">
+            <div class="epoch-row">
+              <div>
+                <div class="epoch-label">FROM</div>
+                <div class="epoch-value" id="fromMs">--</div>
+                <div class="epoch-label" id="fromLocal">--</div>
+              </div>
+              <button class="copy-btn" data-copy="from">Copy</button>
+            </div>
+            <div class="epoch-row">
+              <div>
+                <div class="epoch-label">TO</div>
+                <div class="epoch-value" id="toMs">--</div>
+                <div class="epoch-label" id="toLocal">--</div>
+              </div>
+              <button class="copy-btn" data-copy="to">Copy</button>
+            </div>
+          </div>
+          <div class="range-bar">
+            <div class="range-group">
+              <div class="control-label">Pick a window</div>
+              <div class="button-row compact">
+                <button class="action secondary range-btn" data-range="600000">10m</button>
+                <button class="action secondary range-btn" data-range="3600000">1h</button>
+                <button class="action secondary range-btn" data-range="86400000">24h</button>
+                <button class="action secondary range-btn" data-range="604800000">7d</button>
+              </div>
+            </div>
+            <div class="fetch-group">
+              <button class="action" id="fetchNow" style="min-width:110px;">Fetch</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="search-row">
+        <span class="toggle-note">Open WxCC Search API</span>
+        <button class="search-toggle" id="toggleSearch" aria-pressed="false">
+          <span class="dot"></span>
+          <span>Show WxCC Search API</span>
+        </button>
+      </div>
+
+      <section class="card" id="searchCard">
+        <div class="collapseHead">
+          <div>
+            <div class="section-title" style="margin:0; text-transform:none; color:var(--text); font-size:16px;">
+              <span>WxCC Search API</span>
+            </div>
+          </div>
+          <div class="toolbar-right">
+            <span class="tag" id="searchStatus">Idle</span>
+          </div>
+        </div>
+        <div class="collapseBody">
+          <div class="controls">
+            <div class="control-row">
+              <div class="control-label">Preset</div>
+              <div class="toolbar">
+                <div class="toolbar-left">
+                  <select id="presetSelect" aria-label="Preset query"></select>
+                  <button class="action secondary" id="loadPreset">Load</button>
+                </div>
+                <div class="toolbar-right">
+                  <button class="action secondary" id="updateWindow">Update EPOCH Time</button>
+                  <button class="action" id="runSearch">SEND</button>
+                </div>
+              </div>
+            </div>
+            <div class="control-row">
+              <div class="control-label">Request body (GraphQL)</div>
+              <textarea id="searchBody"></textarea>
+            </div>
+            <div class="control-row">
+              <div class="control-label">Response</div>
+              <div class="response-wrap">
+                <button class="icon-btn copy-fab" id="copyResponse" title="Copy response" aria-label="Copy response">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </button>
+                <pre class="response" id="searchOutput">Waiting to call API…</pre>
+              </div>
+            </div>
+            <div class="search-row" style="margin-top:8px;">
+              <span class="toggle-note">Open Parse Tester</span>
+              <button class="search-toggle" id="toggleParse" aria-pressed="false">
+                <span class="dot"></span>
+                <span>Show Parse Tester</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="parseCard">
+        <div class="section-title" style="margin-bottom: 6px;">
+          <span>Parse Tester</span>
+        </div>
+        <div class="controls">
+          <div class="control-row">
+            <div class="control-label">Parse response (path, e.g. data.task.tasks[0].aggregation[0].value)</div>
+            <div class="toolbar">
+              <div class="toolbar-right" style="flex:1; justify-content:flex-start;">
+                <input type="text" id="parsePath" placeholder="$.data" aria-label="Parse path" style="min-width:260px;">
+                <button class="action secondary" id="parseBtn">Extract</button>
+              </div>
+            </div>
+            <pre class="response" id="parseResult">Result will appear here…</pre>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+  <button class="btn authLink authFab" aria-label="Authenticate">Authenticate</button>
+  <script>
+    const fromMsEl = document.getElementById('fromMs');
+    const toMsEl = document.getElementById('toMs');
+    const fromLocalEl = document.getElementById('fromLocal');
+    const toLocalEl = document.getElementById('toLocal');
+    const fetchNowBtn = document.getElementById('fetchNow');
+    const searchCardEl = document.getElementById('searchCard');
+    const searchStatusEl = document.getElementById('searchStatus');
+    const searchOutputEl = document.getElementById('searchOutput');
+    const runSearchBtn = document.getElementById('runSearch');
+    const searchBodyEl = document.getElementById('searchBody');
+    const loadPresetBtn = document.getElementById('loadPreset');
+    const copyResponseBtn = document.getElementById('copyResponse');
+    const presetSelect = document.getElementById('presetSelect');
+    const toggleSearchBtn = document.getElementById('toggleSearch');
+    const toggleParseBtn = document.getElementById('toggleParse');
+    const updateWindowBtn = document.getElementById('updateWindow');
+    const parsePathInput = document.getElementById('parsePath');
+    const parseBtn = document.getElementById('parseBtn');
+    const parseResultEl = document.getElementById('parseResult');
+    const parseCardEl = document.getElementById('parseCard');
+
+    const ENDPOINT = 'https://api.wxcc-us1.cisco.com/search';
+    const cacheKeyBearer = 'authBearer';
+    const cacheKeyOrg = 'authOrg';
+    const cacheKeyOrgName = 'authOrgName';
+    const cacheKeySearchVisible = 'epochSearchVisible';
+    const cacheKeyParseVisible = 'epochParseVisible';
+
+    let selectedRangeMs = 600000; // default 10m
+    let lastFetchMs = null;
+    let fromMs = null;
+    let toMs = null;
+
+    const formatLocal = (ms, opts = {}) => {
+      return new Intl.DateTimeFormat(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        fractionalSecondDigits: opts.ms ? 3 : undefined,
+        timeZoneName: 'short'
+      }).format(new Date(ms));
+    };
+
+    const highlightRangeButton = () => {
+      document.querySelectorAll('.range-btn').forEach((btn) => {
+        const val = Number(btn.dataset.range);
+        const isActive = val === selectedRangeMs;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-pressed', String(isActive));
+      });
+    };
+    highlightRangeButton();
+
+    const copyActions = {
+      from: () => String(fromMs ?? ''),
+      to: () => String(toMs ?? '')
+    };
+
+    const flashCopyState = (btn) => {
+      const original = btn.textContent;
+      btn.textContent = 'Copied';
+      setTimeout(() => (btn.textContent = original), 900);
+    };
+
+    document.querySelectorAll('.copy-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const kind = btn.dataset.copy;
+        const getter = copyActions[kind];
+        if (getter) {
+          const text = getter();
+          try {
+            await navigator.clipboard.writeText(text);
+            flashCopyState(btn);
+          } catch (err) {
+            console.error('Copy failed', err);
+          }
+        }
+      });
+    });
+
+    document.querySelectorAll('.range-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const val = Number(btn.dataset.range);
+        if (!Number.isNaN(val)) {
+          selectedRangeMs = val;
+          highlightRangeButton();
+        }
+      });
+    });
+
+    const updateDisplay = () => {
+      if (fromMs !== null && toMs !== null) {
+        fromMsEl.textContent = fromMs;
+        toMsEl.textContent = toMs;
+        fromLocalEl.textContent = formatLocal(fromMs, { ms: true });
+        toLocalEl.textContent = formatLocal(toMs, { ms: true });
+      }
+    };
+
+    // Toggle search panel visibility with persisted preference (session)
+    const updateSearchToggleUi = (isVisible) => {
+      toggleSearchBtn.classList.toggle('active', isVisible);
+      toggleSearchBtn.setAttribute('aria-pressed', String(isVisible));
+      toggleSearchBtn.querySelector('span:last-child').textContent = isVisible ? 'Hide WxCC Search API' : 'Show WxCC Search API';
+      searchCardEl.style.display = isVisible ? '' : 'none';
+      sessionStorage.setItem(cacheKeySearchVisible, String(isVisible));
+    };
+    const initialSearchVisible = sessionStorage.getItem(cacheKeySearchVisible);
+    const searchVisible = initialSearchVisible === null ? false : initialSearchVisible === 'true';
+    updateSearchToggleUi(searchVisible);
+
+    toggleSearchBtn.addEventListener('click', () => {
+      const nowVisible = toggleSearchBtn.classList.contains('active') ? false : true;
+      updateSearchToggleUi(nowVisible);
+    });
+
+    // Toggle parse panel visibility with persisted preference (session)
+    const updateParseToggleUi = (isVisible) => {
+      toggleParseBtn.classList.toggle('active', isVisible);
+      toggleParseBtn.setAttribute('aria-pressed', String(isVisible));
+      toggleParseBtn.querySelector('span:last-child').textContent = isVisible ? 'Hide Parse Tester' : 'Show Parse Tester';
+      parseCardEl.style.display = isVisible ? '' : 'none';
+      sessionStorage.setItem(cacheKeyParseVisible, String(isVisible));
+    };
+    const initialParseVisible = sessionStorage.getItem(cacheKeyParseVisible);
+    const parseVisible = initialParseVisible === null ? false : initialParseVisible === 'true';
+    updateParseToggleUi(parseVisible);
+
+    toggleParseBtn.addEventListener('click', () => {
+      const nowVisible = toggleParseBtn.classList.contains('active') ? false : true;
+      updateParseToggleUi(nowVisible);
+    });
+
+    // Simple path parser (dot/bracket notation) for response
+    const parsePath = (obj, path) => {
+      if (!path) return obj;
+      const cleaned = path.replace(/^\s*\$\.?/, ''); // drop optional leading $
+      const parts = cleaned
+        .replace(/\[(\w+)\]/g, '.$1')
+        .split('.')
+        .filter(Boolean);
+      return parts.reduce((curr, key) => (curr && key in curr ? curr[key] : undefined), obj);
+    };
+
+    parseBtn.addEventListener('click', () => {
+      const path = parsePathInput.value.trim();
+      const raw = searchOutputEl.textContent || '';
+      try {
+        const json = JSON.parse(raw);
+        const result = parsePath(json, path);
+        const formatted =
+          result === undefined ? 'Not found' : typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result);
+        parseResultEl.textContent = formatted;
+      } catch (err) {
+        parseResultEl.textContent = 'Response is not valid JSON or path error';
+      }
+    });
+
+    // Refresh time window and inject into body
+    updateWindowBtn.addEventListener('click', () => {
+      // Refresh the epoch window based on current range
+      fetchNowBtn.click();
+      const base = searchBodyEl.value.trim() || buildDefaultSearchBody();
+      searchBodyEl.value = applyEpochToQuery(base);
+      searchStatusEl.textContent = 'Window updated';
+    });
+
+    const presets = [
+      { key: 'simple', label: 'Simple: Task IDs', query: `{\n  task(\n    from: {{FROM}}\n    to: {{TO}}\n  ) {\n    tasks { id }\n  }\n}` },
+      { key: 'basicFields', label: 'Basic Fields', query: `{\n  task(\n    from: {{FROM}}\n    to: {{TO}}\n    pagination: { cursor: "0" }\n  ) {\n    tasks {\n      createdTime\n      channelType\n      entryPoint { name }\n      lastQueue { name }\n      direction\n      terminationType\n      owner { name }\n      id\n      status\n      destination\n      isActive\n      selfserviceDuration\n      ringingDuration\n      queueDuration\n      connectedDuration\n      totalDuration\n      holdDuration\n      wrapupDuration\n    }\n    pageInfo { endCursor hasNextPage }\n  }\n}` },
+      { key: 'realTimeQueuedTasks', label: 'Real-time Queued Tasks', query: `{\n  task(\n    filter: {\n      and: [\n        { channelType: { equals: telephony } }\n        { direction: { equals: "inbound" } }\n        { isActive: { equals: true } }\n      ]\n    }\n  ) {\n    tasks {\n      id\n      origin\n      destination\n      isActive\n      direction\n      owner { id name }\n      lastEntryPoint { id name }\n    }\n  }\n}` },
+      { key: 'advanced', label: 'Advanced Aggregates', query: `{\n  task(\n    from: {{FROM}}\n    to: {{TO}}\n    timeComparator: endedTime\n    filter: {\n      and: [\n        { channelType: { equals: telephony } }\n        { status: { equals: "ended" } }\n        { isActive: { equals: false } }\n      ]\n    }\n    aggregation: {\n      aggr: [\n        { field: totalDuration, type: sum, name: "Total Duration" }\n        { field: connectedDuration, type: sum, name: "Total Connected Duration" }\n      ]\n    }\n  ) {\n    tasks {\n      lastWrapupCodeName\n      aggregation { name value }\n    }\n    pageInfo { endCursor hasNextPage }\n  }\n}` },
+      { key: 'callbackFilter', label: 'Callback Filter', query: `{\n  task(\n    from: {{FROM}}\n    to: {{TO}}\n     filter: {\n      and: [\n        { callbackData: { equals: { callbackNumber: "nnnnnnnnnnn" } } }\n        { callbackData: { equals: { callbackStatus: "Success" } } }\n      ]\n    }\n  ) {\n    tasks {\n      callbackData {\n        callbackRequestTime\n        callbackConnectTime\n        callbackNumber\n        callbackStatus\n        callbackOrigin\n        callbackType\n      }\n    }\n  }\n}` },
+      { key: 'interactionDetails', label: 'Interaction Details', query: `{\n  task(\n    from: {{FROM}}\n    to: {{TO}}\n     timeComparator: createdTime\n    filter: {\n      and: [\n        { channelType: { equals: telephony } }\n        { origin: { equals: "+12345670000" } }\n      ]\n    }\n  ) {\n    tasks {\n      id\n      isActive\n      createdTime\n      endedTime\n      origin\n      destination\n      totalDuration\n      lastEntryPoint { id name }\n      lastQueue { id name }\n      lastTeam { id name }\n      owner { name id }\n    }\n  }\n}` },
+      { key: 'lastAgentInteraction', label: 'Last Agent Interaction (7d)', query: `{\n  task(\n    from: {{FROM}}\n    to: {{TO}}\n    timeComparator: createdTime\n    filter: {\n      and: [\n        { channelType: { equals: telephony } }\n        { origin: { equals: "+12345677890" } }\n        { status: { equals: "ended" } }\n        { direction: { equals: "inbound" } }\n        { isActive: { equals: false } }\n      ]\n    }\n    pagination: { cursor: "0" }\n  ) {\n    tasks {\n      id\n      createdTime\n      endedTime\n      origin\n      destination\n      lastWrapupCodeName\n      totalDuration\n      selfserviceDuration\n      captureRequested\n      lastEntryPoint { id name }\n      lastQueue { id name }\n      lastTeam { id name }\n      owner { name id }\n    }\n    pageInfo { endCursor hasNextPage }\n  }\n}` },
+      { key: 'agentSessionState', label: 'Agent Session State', query: `{\n  agentSession(\n    from: {{FROM}}\n    to: {{TO}}\n    filter: { isActive: { equals: true } }\n  ) {\n    agentSessions {\n      agentName\n    }\n  }\n}` },
+      { key: 'wallboardQueue', label: 'Wallboard: Queue Metrics', query: `{\n  task(\n    from: {{FROM}}\n    to: {{TO}}\n    timeComparator: createdTime\n    filter: {\n      and: [\n        { direction: { equals: "inbound" } }\n        { channelType: { equals: telephony } }\n      ]\n    }\n    aggregations: [\n      { field: "id", type: count, name: "Total Contacts by Queue" }\n      { field: "queueDuration", type: average, name: "Average Queue Time" }\n      { field: "queueDuration", type: max, name: "Maximum Queue Time" }\n      { field: "totalDuration", type: average, name: "Average Handle Time by Queue" }\n    ]\n  ) {\n    tasks {\n      lastQueue { name id }\n      aggregation { name value }\n    }\n    pageInfo { hasNextPage endCursor }\n  }\n}` },
+      { key: 'queueRealtime', label: 'Realtime Queued Count', query: `{\n  task(\n    from: {{FROM}}\n    to: {{TO}}\n    timeComparator: createdTime\n    filter: {\n      and: [\n        { direction: { equals: "inbound" } }\n        { isActive: { equals: true } }\n        { status: { equals: "parked" } }\n        { channelType: { equals: telephony } }\n      ]\n    }\n    aggregations: {\n      field: "id"\n      type: count\n      name: "Total Queued Contacts RealTime"\n    }\n  ) {\n    tasks {\n      aggregation { name value }\n    }\n    pageInfo { hasNextPage endCursor }\n  }\n}` },
+    ];
+
+    const fillPresetSelect = () => {
+      presetSelect.innerHTML = '';
+      presets.forEach((p) => {
+        const opt = document.createElement('option');
+        opt.value = p.key;
+        opt.textContent = p.label;
+        presetSelect.appendChild(opt);
+      });
+    };
+    fillPresetSelect();
+
+    const applyEpochToQuery = (query) => {
+      const from = fromMs ?? Date.now() - selectedRangeMs;
+      const to = toMs ?? Date.now();
+      return query.replace(/{{FROM}}/g, from).replace(/{{TO}}/g, to);
+    };
+
+    const loadPreset = () => {
+      const key = presetSelect.value;
+      const preset = presets.find((p) => p.key === key);
+      if (preset) {
+        searchBodyEl.value = applyEpochToQuery(preset.query);
+        searchStatusEl.textContent = `Loaded preset: ${preset.label}`;
+      }
+    };
+
+    const buildDefaultSearchBody = () => {
+      const preset = presets[0];
+      return applyEpochToQuery(preset.query);
+    };
+
+    fetchNowBtn.addEventListener('click', () => {
+      const now = Date.now();
+      toMs = now;
+      fromMs = now - selectedRangeMs;
+      lastFetchMs = now;
+      updateDisplay();
+      loadPreset();
+      const orgName = localStorage.getItem(cacheKeyOrgName) || '';
+      const orgId = localStorage.getItem(cacheKeyOrg) || '';
+      const tag = document.getElementById('orgTag');
+      if (tag) tag.textContent = orgName ? `Org: ${orgName}` : (orgId ? `Org: ${orgId}` : 'Not authenticated');
+    });
+
+    runSearchBtn.addEventListener('click', async () => {
+      const bearer = (localStorage.getItem(cacheKeyBearer) || '').trim();
+      const orgId = (localStorage.getItem(cacheKeyOrg) || '').trim();
+      if (!bearer || !orgId) {
+        searchStatusEl.textContent = 'Missing bearer token or Org ID — click Authenticate.';
+        return;
+      }
+
+      const gql = (searchBodyEl.value.trim() || buildDefaultSearchBody()).trim();
+      const bodyObj = { query: gql, variables: {} };
+      const body = JSON.stringify(bodyObj);
+
+      searchStatusEl.textContent = 'Calling…';
+      searchOutputEl.textContent = 'Calling API with body:\n' + body;
+
+      const headers = {
+        Authorization: `Bearer ${bearer}`,
+        OrgId: orgId
+      };
+
+      headers['Content-Type'] = 'application/json';
+
+      try {
+        const res = await fetch(ENDPOINT, {
+          method: 'POST',
+          headers,
+          body
+        });
+        const text = await res.text();
+        let formatted = text || '(empty response)';
+        try {
+          const parsed = JSON.parse(text);
+          formatted = JSON.stringify(parsed, null, 2);
+        } catch (_) {
+          // keep raw text
+        }
+        searchStatusEl.textContent = res.ok ? 'Success' : `Error (${res.status})`;
+        searchOutputEl.textContent = formatted;
+      } catch (err) {
+        searchStatusEl.textContent = 'Network/connection error';
+        searchOutputEl.textContent = `Fetch failed:\n${String(err)}\n\nPayload sent:\n${body}`;
+      }
+    });
+
+    loadPresetBtn.addEventListener('click', () => {
+      loadPreset();
+    });
+
+    presetSelect.addEventListener('change', () => {
+      loadPreset();
+    });
+
+    copyResponseBtn.addEventListener('click', async () => {
+      const text = searchOutputEl.textContent || '';
+      const original = copyResponseBtn.innerHTML;
+      try {
+        await navigator.clipboard.writeText(text);
+        copyResponseBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"></path></svg>';
+        setTimeout(() => (copyResponseBtn.innerHTML = original), 900);
+      } catch (err) {
+        console.error('Copy failed', err);
+      }
+    });
+
+    // Auth modal shared
+    (function initAuthModal(){
+      if (document.getElementById('authModal')) return;
+      const style = document.createElement('style');
+      style.textContent = `
+        .authModalOverlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:9999;padding:16px;}
+        .authModalOverlay.open{display:flex;}
+        .authCard{width:100%;max-width:520px;background:#131a2a;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px;box-shadow:0 18px 36px rgba(0,0,0,.45);position:relative;}
+        .authCard h2{margin:0 0 8px;font-size:1.2rem;}
+        .authCard p{margin:0 0 12px;color:#92a0b8;line-height:1.4;}
+        .authCard label{display:block;font-size:13px;color:#92a0b8;margin:10px 0 6px;}
+        .authCard input{width:100%;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:#0e1525;color:#e9edf5;padding:10px 12px;font-size:14px;}
+        .authCard input:focus{outline:none;box-shadow:0 0 0 3px rgba(59,130,246,.25);}
+        .authCard .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:14px;}
+        .authCard .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 14px;border-radius:12px;font-weight:700;border:1px solid rgba(255,255,255,.08);background:#0e1525;color:#e9edf5;cursor:pointer;text-decoration:none;}
+        .authCard .btn.primary{background:linear-gradient(135deg,#22d3ee,#3b82f6);color:#06111d;border:none;}
+        .authClose{position:absolute;right:10px;top:10px;background:transparent;border:none;color:#92a0b8;font-size:18px;cursor:pointer;}
+        .authStatus{margin-top:8px;font-size:13px;color:#92a0b8;}
+      `;
+      document.head.appendChild(style);
+
+      const overlay = document.createElement('div');
+      overlay.className = 'authModalOverlay';
+      overlay.id = 'authModal';
+      overlay.innerHTML = `
+        <div class="authCard">
+          <button class="authClose" aria-label="Close">×</button>
+          <h2>Authenticate</h2>
+          <p>Paste your Bearer token and Org ID. Saved locally for all tools.</p>
+          <label for="authBearer">Bearer token</label>
+          <input id="authBearer" type="password" autocomplete="off" placeholder="Paste Bearer token" />
+          <label for="authOrg">Org ID</label>
+          <input id="authOrg" type="text" autocomplete="off" placeholder="Paste Org ID" />
+          <div class="actions">
+            <a class="btn" href="https://developer.webex.com/docs/api/getting-started" target="_blank" rel="noreferrer">Get token</a>
+            <button class="btn primary" id="authSave">Save</button>
+          </div>
+          <div class="authStatus" id="authStatus"></div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+
+      const bearerEl = overlay.querySelector('#authBearer');
+      const orgEl = overlay.querySelector('#authOrg');
+      const statusEl = overlay.querySelector('#authStatus');
+      const closeBtn = overlay.querySelector('.authClose');
+      const saveBtn = overlay.querySelector('#authSave');
+      const KEYS = { bearer:'authBearer', org:'authOrg', orgName:'authOrgName' };
+
+      const populate = ()=> {
+        bearerEl.value = localStorage.getItem(KEYS.bearer) || '';
+        orgEl.value = localStorage.getItem(KEYS.org) || '';
+        statusEl.textContent = localStorage.getItem(KEYS.orgName) ? `Org: ${localStorage.getItem(KEYS.orgName)}` : '';
+      };
+
+      const fetchOrgName = async (bearer, orgId) => {
+        try {
+          const res = await fetch(`https://webexapis.com/v1/organizations/${encodeURIComponent(orgId)}`, { headers:{Authorization:`Bearer ${bearer}`}});
+          const data = await res.json();
+          return data.displayName || data.name || data.organization?.displayName || data.organization?.name || orgId;
+        } catch { return ''; }
+      };
+
+      saveBtn.addEventListener('click', async ()=>{
+        const b = bearerEl.value.trim();
+        const o = orgEl.value.trim();
+        localStorage.setItem(KEYS.bearer, b);
+        localStorage.setItem(KEYS.org, o);
+        statusEl.textContent = 'Saved';
+        if (b && o) {
+          statusEl.textContent = 'Looking up org...';
+          const name = await fetchOrgName(b, o);
+          if (name) {
+            localStorage.setItem(KEYS.orgName, name);
+            statusEl.textContent = `Saved — Org: ${name}`;
+          } else {
+            statusEl.textContent = 'Saved (org lookup failed)';
+          }
+        }
+        const orgTag = document.getElementById('orgTag');
+        const name = localStorage.getItem(KEYS.orgName) || '';
+        if (orgTag) orgTag.textContent = name ? `Org: ${name}` : (o ? `Org: ${o}` : 'Not authenticated');
+        updateAuthIndicators();
+        setTimeout(()=>{ overlay.classList.remove('open'); }, 1200);
+      });
+
+      const close = ()=> overlay.classList.remove('open');
+      closeBtn.addEventListener('click', close);
+      overlay.addEventListener('click',(e)=>{ if (e.target === overlay) close(); });
+      window.addEventListener('keydown',(e)=>{ if (e.key === 'Escape') close(); });
+
+      const open = ()=> { populate(); overlay.classList.add('open'); };
+      document.querySelectorAll('.authLink').forEach(el=>{
+        el.addEventListener('click',(e)=>{ e.preventDefault(); open(); });
+      });
+    })();
+
+    function updateAuthIndicators() {
+      const b = localStorage.getItem('authBearer') || '';
+      const org = localStorage.getItem('authOrgName') || localStorage.getItem('authOrg') || '';
+      document.querySelectorAll('.authLink').forEach(el=>{
+        if (b) { el.classList.add('authed'); el.textContent = 'Authenticated'; }
+        else { el.classList.remove('authed'); el.textContent = 'Authenticate'; }
+      });
+      const tag = document.getElementById('orgTag');
+      if (tag) tag.textContent = org ? `Org: ${org}` : 'Not authenticated';
+    }
+    updateAuthIndicators();
+
+    // Initial state
+    fetchNowBtn.click();
+  </script>
+</body>
+</html>
