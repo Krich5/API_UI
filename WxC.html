@@ -27,8 +27,8 @@
     .btn { display:inline-flex; align-items:center; gap:8px; padding:9px 14px; border-radius:12px; font-weight:700; border:1px solid var(--border); background:var(--card); color:var(--fg); text-decoration:none; cursor:pointer; }
     .btn.primary { background:linear-gradient(135deg,var(--accentA),var(--accentB)); color:#06111d; border:none; }
     .authLink.authed { background:linear-gradient(135deg,var(--accentA),var(--accentB)); color:#06111d; border:none; }
-    .orgPane { width:calc(100% - 25px); max-width:1060px; margin:12px auto 0; padding:12px 16px; display:flex; justify-content:center; align-items:center; gap:8px; background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 12px 24px rgba(0,0,0,.24); }
-    .orgPane .orgTag { font-weight:800; color:var(--fg); font-size:15px; }
+    .orgPane { display:none; }
+    .orgTag { font-weight:800; color:var(--fg); font-size:16px; margin-top:8px; }
     .authFab { position:fixed; right:20px; bottom:20px; z-index:999; }
     main { padding:32px 0 60px; }
     .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow:0 16px 30px rgba(0,0,0,.3); }
@@ -48,7 +48,7 @@
     <div class="wrap nav">
       <div>
         <div class="brand">Webex Calling (WxC)</div>
-        <div class="sub"></div>
+        <div class="orgTag" id="orgTag">Not authenticated</div>
       </div>
       <div class="row">
         <a class="btn" href="index.html" aria-label="Home" title="Home" style="gap:6px; align-items:center;">
@@ -63,9 +63,6 @@
       </div>
     </div>
   </header>
-  <div class="orgPane">
-    <div class="orgTag" id="orgTag">Not authenticated</div>
-  </div>
 
   <main>
     <div class="wrap">
