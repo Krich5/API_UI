@@ -33,10 +33,9 @@
     .authFab { position:fixed; right:20px; bottom:20px; z-index:999; }
 
     main { padding:32px 0 80px; }
-    .contentWrap { width:calc(100% - 24px); max-width:1100px; margin:0 auto; padding:0 12px; display:flex; flex-direction:column; gap:16px; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(360px,1fr)); gap:16px; width:100%; }
+    .contentWrap { max-width:1100px; margin:0 auto; padding:0 20px; display:flex; flex-direction:column; gap:16px; }
 
-    .card { position:relative; background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); width:100%; max-width:1100px; margin:0 auto; }
+    .card { position:relative; background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); width:100%; }
     .section-title { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; font-size:15px; letter-spacing:.02em; color:var(--muted); text-transform:uppercase; }
     .org-title { margin:4px 0 10px; font-size:18px; font-weight:700; color:var(--text); letter-spacing:.01em; }
     .epoch-display { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); }
@@ -137,45 +136,43 @@
 
   <main>
     <div class="contentWrap">
-      <div class="grid">
-        <section class="card">
-          <div class="section-title">
-            <span>Epoch window</span>
+      <section class="card">
+        <div class="section-title">
+          <span>Epoch window</span>
+        </div>
+        <div class="epoch-display">
+          <div class="epoch-row">
+            <div>
+              <div class="epoch-label">FROM</div>
+              <div class="epoch-value" id="fromMs">--</div>
+              <div class="epoch-label" id="fromLocal">--</div>
+            </div>
+            <button class="copy-btn" data-copy="from">Copy</button>
           </div>
-          <div class="epoch-display">
-            <div class="epoch-row">
-              <div>
-                <div class="epoch-label">FROM</div>
-                <div class="epoch-value" id="fromMs">--</div>
-                <div class="epoch-label" id="fromLocal">--</div>
-              </div>
-              <button class="copy-btn" data-copy="from">Copy</button>
+          <div class="epoch-row">
+            <div>
+              <div class="epoch-label">TO</div>
+              <div class="epoch-value" id="toMs">--</div>
+              <div class="epoch-label" id="toLocal">--</div>
             </div>
-            <div class="epoch-row">
-              <div>
-                <div class="epoch-label">TO</div>
-                <div class="epoch-value" id="toMs">--</div>
-                <div class="epoch-label" id="toLocal">--</div>
-              </div>
-              <button class="copy-btn" data-copy="to">Copy</button>
-            </div>
+            <button class="copy-btn" data-copy="to">Copy</button>
           </div>
-          <div class="range-bar">
-            <div class="range-group">
-              <div class="control-label">Pick a window</div>
-              <div class="button-row compact">
-                <button class="action secondary range-btn" data-range="600000">10m</button>
-                <button class="action secondary range-btn" data-range="3600000">1h</button>
-                <button class="action secondary range-btn" data-range="86400000">24h</button>
-                <button class="action secondary range-btn" data-range="604800000">7d</button>
-              </div>
-            </div>
-            <div class="fetch-group">
-              <button class="action" id="fetchNow" style="min-width:110px;">Fetch</button>
+        </div>
+        <div class="range-bar">
+          <div class="range-group">
+            <div class="control-label">Pick a window</div>
+            <div class="button-row compact">
+              <button class="action secondary range-btn" data-range="600000">10m</button>
+              <button class="action secondary range-btn" data-range="3600000">1h</button>
+              <button class="action secondary range-btn" data-range="86400000">24h</button>
+              <button class="action secondary range-btn" data-range="604800000">7d</button>
             </div>
           </div>
-        </section>
-      </div>
+          <div class="fetch-group">
+            <button class="action" id="fetchNow" style="min-width:110px;">Fetch</button>
+          </div>
+        </div>
+      </section>
 
       <div class="search-row">
         <span class="toggle-note">Open WxCC Search API</span>
@@ -255,6 +252,7 @@
           </div>
         </div>
       </section>
+    </div>
     </div>
   </main>
   <button class="btn authLink authFab" aria-label="Authenticate">Authenticate</button>
@@ -420,15 +418,6 @@
       }
     });
 
-    // Refresh time window and inject into body
-    updateWindowBtn.addEventListener('click', () => {
-      // Refresh the epoch window based on current range
-      fetchNowBtn.click();
-      const base = searchBodyEl.value.trim() || buildDefaultSearchBody();
-      searchBodyEl.value = applyEpochToQuery(base);
-      searchStatusEl.textContent = 'Window updated';
-    });
-
     const presets = [
       { key: 'simple', label: 'Simple: Task IDs', query: `{\n  task(\n    from: {{FROM}}\n    to: {{TO}}\n  ) {\n    tasks { id }\n  }\n}` },
       { key: 'basicFields', label: 'Basic Fields', query: `{\n  task(\n    from: {{FROM}}\n    to: {{TO}}\n    pagination: { cursor: "0" }\n  ) {\n    tasks {\n      createdTime\n      channelType\n      entryPoint { name }\n      lastQueue { name }\n      direction\n      terminationType\n      owner { name }\n      id\n      status\n      destination\n      isActive\n      selfserviceDuration\n      ringingDuration\n      queueDuration\n      connectedDuration\n      totalDuration\n      holdDuration\n      wrapupDuration\n    }\n    pageInfo { endCursor hasNextPage }\n  }\n}` },
@@ -440,11 +429,15 @@
       { key: 'agentSessionState', label: 'Agent Session State', query: `{\n  agentSession(\n    from: {{FROM}}\n    to: {{TO}}\n    filter: { isActive: { equals: true } }\n  ) {\n    agentSessions {\n      agentName\n    }\n  }\n}` },
       { key: 'wallboardQueue', label: 'Wallboard: Queue Metrics', query: `{\n  task(\n    from: {{FROM}}\n    to: {{TO}}\n    timeComparator: createdTime\n    filter: {\n      and: [\n        { direction: { equals: "inbound" } }\n        { channelType: { equals: telephony } }\n      ]\n    }\n    aggregations: [\n      { field: "id", type: count, name: "Total Contacts by Queue" }\n      { field: "queueDuration", type: average, name: "Average Queue Time" }\n      { field: "queueDuration", type: max, name: "Maximum Queue Time" }\n      { field: "totalDuration", type: average, name: "Average Handle Time by Queue" }\n    ]\n  ) {\n    tasks {\n      lastQueue { name id }\n      aggregation { name value }\n    }\n    pageInfo { hasNextPage endCursor }\n  }\n}` },
       { key: 'queueRealtime', label: 'Realtime Queued Count', query: `{\n  task(\n    from: {{FROM}}\n    to: {{TO}}\n    timeComparator: createdTime\n    filter: {\n      and: [\n        { direction: { equals: "inbound" } }\n        { isActive: { equals: true } }\n        { status: { equals: "parked" } }\n        { channelType: { equals: telephony } }\n      ]\n    }\n    aggregations: {\n      field: "id"\n      type: count\n      name: "Total Queued Contacts RealTime"\n    }\n  ) {\n    tasks {\n      aggregation { name value }\n    }\n    pageInfo { hasNextPage endCursor }\n  }\n}` },
-      { key: 'AgentsLogin', label: 'Realtime Agents Logged In', query: `{\n  agentSession(\n    from: {{FROM}}\n    to: {{TO}}\n    filter: { isActive: { equals: true } }\n  ) {\n    agentSessions {\n      agentId\n      agentName\n      teamId\n      teamName\n      channelInfo { channelType currentState }\n    }\n  }\n}` },
+      { key: 'AgentsLogin', label: 'Realtime Agents Logged In', query: `{\n  agentSession(\n    from: {{FROM}}\n    to: {{TO}}\n    filter: { isActive: { equals: true } }\n  ) {\n    agentSessions { agentId teamId }\n  }\n}` },
     ];
 
     const fillPresetSelect = () => {
       presetSelect.innerHTML = '';
+      const empty = document.createElement('option');
+      empty.value = '';
+      empty.textContent = 'Select a preset (optional)';
+      presetSelect.appendChild(empty);
       presets.forEach((p) => {
         const opt = document.createElement('option');
         opt.value = p.key;
@@ -464,27 +457,61 @@
       const key = presetSelect.value;
       const preset = presets.find((p) => p.key === key);
       if (preset) {
-        searchBodyEl.value = applyEpochToQuery(preset.query);
+        refreshEpochWindow({ updateBody: true, presetKey: key });
         searchStatusEl.textContent = `Loaded preset: ${preset.label}`;
       }
     };
 
-    const buildDefaultSearchBody = () => {
-      const preset = presets[0];
-      return applyEpochToQuery(preset.query);
-    };
+    const DEFAULT_BODY = `{
+  task(
+    from: {{FROM}}
+    to: {{TO}}
+  ) {
+    tasks { id }
+  }
+}`;
 
-    fetchNowBtn.addEventListener('click', () => {
+    const buildDefaultSearchBody = () => applyEpochToQuery(DEFAULT_BODY);
+
+    const refreshEpochWindow = ({ updateBody = false, presetKey } = {}) => {
       const now = Date.now();
       toMs = now;
       fromMs = now - selectedRangeMs;
       lastFetchMs = now;
       updateDisplay();
-      loadPreset();
+
+      const example = buildDefaultSearchBody();
+      searchBodyEl.placeholder = example;
+      if (!searchBodyEl.value.trim() && !searchBodyEl.dataset.example) {
+        searchBodyEl.value = example;
+        searchBodyEl.dataset.example = '1';
+      }
+
+      if (updateBody) {
+        let template = searchBodyEl.value.trim();
+        if (presetKey) {
+          const preset = presets.find(p => p.key === presetKey);
+          if (preset) template = preset.query;
+        }
+        if (!template) template = DEFAULT_BODY;
+        searchBodyEl.value = applyEpochToQuery(template);
+        delete searchBodyEl.dataset.example;
+      }
+
       const orgName = localStorage.getItem(cacheKeyOrgName) || '';
       const orgId = localStorage.getItem(cacheKeyOrg) || '';
       const tag = document.getElementById('orgTag');
       if (tag) tag.textContent = orgName ? `Org: ${orgName}` : (orgId ? `Org: ${orgId}` : 'Not authenticated');
+    };
+
+    // Refresh time window and inject into body
+    updateWindowBtn.addEventListener('click', () => {
+      refreshEpochWindow({ updateBody: true });
+      searchStatusEl.textContent = 'Window updated';
+    });
+
+    fetchNowBtn.addEventListener('click', () => {
+      refreshEpochWindow({ updateBody: false });
     });
 
     runSearchBtn.addEventListener('click', async () => {
@@ -535,10 +562,6 @@
       loadPreset();
     });
 
-    presetSelect.addEventListener('change', () => {
-      loadPreset();
-    });
-
     copyResponseBtn.addEventListener('click', async () => {
       const text = searchOutputEl.textContent || '';
       const original = copyResponseBtn.innerHTML;
@@ -548,6 +571,13 @@
         setTimeout(() => (copyResponseBtn.innerHTML = original), 900);
       } catch (err) {
         console.error('Copy failed', err);
+      }
+    });
+
+    searchBodyEl.addEventListener('focus', () => {
+      if (searchBodyEl.dataset.example === '1') {
+        searchBodyEl.value = '';
+        delete searchBodyEl.dataset.example;
       }
     });
 
