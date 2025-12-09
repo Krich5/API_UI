@@ -91,6 +91,9 @@
 
     .response { background:var(--input); border:1px solid var(--border); border-radius:10px; padding:12px; color:var(--text); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace; white-space:pre-wrap; min-height:180px; resize:vertical; overflow:auto; }
     .field-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; }
+    .pathList { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+    .pathBadge { padding:6px 10px; border-radius:10px; background:rgba(255,255,255,.06); border:1px solid var(--border); font-size:12px; color:var(--text); cursor:pointer; transition:background-color .15s ease, border-color .15s ease; }
+    .pathBadge:hover { background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.15); }
 
     .collapseHead { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
     .collapseBody { border-top:none; margin-top:0; padding-top:0; display:block; }
@@ -203,6 +206,7 @@
                     <button class="action secondary" id="parseBtn">Extract</button>
                   </div>
                 </div>
+                <div class="pathList" id="pathList"></div>
               <div class="response-wrap" style="margin-top:6px;">
                 <button class="icon-btn copy-fab" data-copy-target="parseResult" title="Copy parse result" aria-label="Copy parse result">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -293,6 +297,7 @@
     const parseBtn = document.getElementById('parseBtn');
     const parseResultEl = document.getElementById('parseResult');
     const parseCardEl = document.getElementById('parseCard');
+    const pathListEl = document.getElementById('pathList');
 
     const ENDPOINT = 'https://api.wxcc-us1.cisco.com/search';
     const cacheKeyBearer = 'authBearer';
@@ -304,6 +309,7 @@
     let lastFetchMs = null;
     let fromMs = null;
     let toMs = null;
+    let lastJson = null;
 
     const formatLocal = (ms, opts = {}) => {
       return new Intl.DateTimeFormat(undefined, {
@@ -417,6 +423,13 @@
 
     parseBtn.addEventListener('click', runParse);
     parsePathInput.addEventListener('input', runParse);
+    searchOutputEl.addEventListener('mouseup', () => {
+      const sel = (window.getSelection()?.toString() || '').trim();
+      if (sel && sel.length < 120) {
+        parsePathInput.value = sel;
+        parseBtn.click();
+      }
+    });
 
     const presets = [
       { key: 'simple', label: 'Simple: Task IDs', query: `{\n  task(\n    from: {{FROM}}\n    to: {{TO}}\n  ) {\n    tasks { id }\n  }\n}` },
@@ -550,14 +563,20 @@
         try {
           const parsed = JSON.parse(text);
           formatted = JSON.stringify(parsed, null, 2);
+          lastJson = parsed;
+          renderPaths();
         } catch (_) {
           // keep raw text
+          lastJson = null;
+          renderPaths();
         }
         searchStatusEl.textContent = res.ok ? 'Success' : `Error (${res.status})`;
         searchOutputEl.textContent = formatted;
       } catch (err) {
         searchStatusEl.textContent = 'Network/connection error';
         searchOutputEl.textContent = `Fetch failed:\n${String(err)}\n\nPayload sent:\n${body}`;
+        lastJson = null;
+        renderPaths();
       }
     });
 
@@ -749,6 +768,37 @@
       if (tag) tag.textContent = org ? `Org: ${org}` : 'Not authenticated';
     }
     updateAuthIndicators();
+
+    const renderPaths = () => {
+      if (!pathListEl) return;
+      pathListEl.innerHTML = '';
+      if (!lastJson || typeof lastJson !== 'object') return;
+      const paths = [];
+      const add = (p) => { if (paths.length < 20) paths.push(p); };
+      const queue = [['$', lastJson, 0]];
+      while (queue.length && paths.length < 20) {
+        const [p, val, depth] = queue.shift();
+        if (depth > 3) continue;
+        if (Array.isArray(val)) {
+          add(p);
+          if (val[0] !== undefined) queue.push([`${p}[0]`, val[0], depth + 1]);
+        } else if (val && typeof val === 'object') {
+          add(p);
+          Object.keys(val).slice(0, 6).forEach((k) => queue.push([`${p}.${k}`, val[k], depth + 1]));
+        }
+      }
+      paths.forEach(p => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pathBadge';
+        btn.textContent = p;
+        btn.addEventListener('click', () => {
+          parsePathInput.value = p;
+          parseBtn.click();
+        });
+        pathListEl.appendChild(btn);
+      });
+    };
 
     // Initial state
     fetchNowBtn.click();
