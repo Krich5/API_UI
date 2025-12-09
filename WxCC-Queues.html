@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>WxCC — Queues</title>
+  <link rel="icon" type="image/png" href="CX%20only.png" />
+  <style>
+    :root {
+      --bg:#0b1020;
+      --card:#131a2a;
+      --muted:#92a0b8;
+      --fg:#e9edf5;
+      --accentA:#22d3ee;
+      --accentB:#3b82f6;
+      --input:#0e1525;
+      --border:rgba(255,255,255,.08);
+      --radius:18px;
+      --shadow:0 10px 30px rgba(0,0,0,.25);
+    }
+    *, *::before, *::after { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:var(--bg); color:var(--fg); }
+    header { padding:16px 20px; border-bottom:1px solid var(--border); background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0)); }
+    .wrap { max-width:1100px; margin:0 auto; padding:0 18px; }
+    .nav { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .brand { font-weight:800; font-size:1.1rem; letter-spacing:.25px; }
+    .orgTag { font-weight:800; color:var(--fg); font-size:16px; margin-top:8px; }
+    .btn { display:inline-flex; align-items:center; gap:8px; padding:9px 14px; border-radius:12px; font-weight:700; border:1px solid var(--border); background:var(--card); color:var(--fg); text-decoration:none; cursor:pointer; }
+    .btn.primary { background:linear-gradient(135deg,var(--accentA),var(--accentB)); color:#06111d; border:none; }
+    .authLink.authed { background:linear-gradient(135deg,var(--accentA),var(--accentB)); color:#06111d; border:none; }
+    main { padding:32px 0 80px; }
+    .card { position:relative; background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); }
+    .section-title { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; font-size:15px; letter-spacing:.02em; color:var(--muted); text-transform:uppercase; }
+    label { display:block; font-size:13px; color:var(--muted); margin:8px 0 6px; }
+    select { width:100%; border-radius:12px; border:1px solid var(--border); background:var(--input); color:var(--fg); padding:10px 12px; font-size:14px; }
+    .actionsRow { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:center; }
+    .pill { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:12px; background:rgba(255,255,255,.06); border:1px solid var(--border); color:var(--fg); font-size:12px; }
+    .response { background:var(--input); border:1px solid var(--border); border-radius:10px; padding:12px; color:var(--fg); font-family:ui-monospace,SFMono-Regular,Menlo,Monospace,Consolas,"Liberation Mono","Courier New"; white-space:pre-wrap; min-height:200px; resize:vertical; overflow:auto; }
+    .response-wrap { position:relative; }
+    .response-wrap .response { padding-right:48px; margin:0; }
+    .copy-fab { position:absolute; top:8px; right:8px; padding:0; background:transparent; border:none; border-radius:6px; width:32px; height:32px; min-width:32px; display:flex; align-items:center; justify-content:center; color:var(--muted); }
+    .copy-fab svg { width:16px; height:16px; }
+    .status { color:var(--muted); font-size:13px; }
+    .authFab { position:fixed; right:20px; bottom:20px; z-index:999; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap nav">
+      <div>
+        <div class="brand">WxCC — Queues</div>
+        <div class="orgTag" id="orgTag">Not authenticated</div>
+      </div>
+      <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <a class="btn" href="index.html" aria-label="Home" title="Home" style="gap:6px; align-items:center;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;">
+            <path d="M3 11.5 12 4l9 7.5"/>
+            <path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/>
+            <path d="M10 21v-6h4v6"/>
+          </svg>
+        </a>
+        <a class="btn" href="WxCC.html">← Back to WxCC tools</a>
+        <a class="btn primary" href="https://developer.webex.com/webex-contact-center/docs/webex-contact-center" target="_blank" rel="noreferrer">Webex CC API Docs</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <section class="card">
+        <div class="section-title">
+          <span>Queues</span>
+          <span class="pill">REST</span>
+        </div>
+        <p style="margin:0 0 12px; color:var(--muted); max-width:780px;">List inbound queues that hold customer contacts before routing to agents.</p>
+        <div class="grid" style="grid-template-columns:1fr;">
+          <div>
+            <div class="actionsRow" style="margin-top:0; justify-content:space-between;">
+              <span class="status" id="status">Idle</span>
+              <button class="btn" id="sendBtn">SEND</button>
+            </div>
+            <div class="response-wrap" style="margin-top:12px;">
+              <button class="copy-fab" data-copy-target="responseBox" title="Copy response" aria-label="Copy response">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+              <pre class="response" id="responseBox">Waiting to call API…</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <button class="btn authLink authFab" aria-label="Authenticate">Authenticate</button>
+
+  <script>
+    const responseBoxEl = document.getElementById('responseBox');
+    const statusEl = document.getElementById('status');
+    const sendBtn = document.getElementById('sendBtn');
+
+    const cacheKeyBearer = 'authBearer';
+    const cacheKeyOrg = 'authOrg';
+    const cacheKeyOrgName = 'authOrgName';
+
+    const ENDPOINT = (orgId) => `https://api.wxcc-us1.cisco.com/organization/${encodeURIComponent(orgId)}/contact-service-queue`;
+
+    document.querySelectorAll('[data-copy-target]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const targetId = btn.getAttribute('data-copy-target');
+        const target = document.getElementById(targetId);
+        if (!target) return;
+        const text = target.value !== undefined ? target.value : target.textContent || '';
+        const original = btn.innerHTML;
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"></path></svg>';
+          setTimeout(() => (btn.innerHTML = original), 900);
+        } catch (err) {
+          console.error('Copy failed', err);
+        }
+      });
+    });
+
+    sendBtn.addEventListener('click', async () => {
+      const bearer = (localStorage.getItem(cacheKeyBearer) || '').trim();
+      const orgId = (localStorage.getItem(cacheKeyOrg) || '').trim();
+      if (!bearer || !orgId) {
+        statusEl.textContent = 'Missing bearer token or Org ID — click Authenticate.';
+        return;
+      }
+      const url = ENDPOINT(orgId);
+      const opts = { method: 'GET', headers: { Authorization: `Bearer ${bearer}` } };
+      statusEl.textContent = 'Calling…';
+      responseBoxEl.textContent = 'Calling API…';
+      try {
+        const res = await fetch(url, opts);
+        const text = await res.text();
+        let formatted = text || '(empty response)';
+        try { formatted = JSON.stringify(JSON.parse(text), null, 2); } catch (_) {}
+        statusEl.textContent = res.ok ? 'Success' : `Error (${res.status})`;
+        responseBoxEl.textContent = formatted;
+      } catch (err) {
+        statusEl.textContent = 'Network error';
+        responseBoxEl.textContent = String(err);
+      }
+    });
+
+    // Auth modal shared (same as other pages)
+    (function initAuthModal(){
+      if (document.getElementById('authModal')) return;
+      const style = document.createElement('style');
+      style.textContent = `
+        .authModalOverlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:9999;padding:16px;}
+        .authModalOverlay.open{display:flex;}
+        .authCard{width:100%;max-width:520px;background:#131a2a;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px;box-shadow:0 18px 36px rgba(0,0,0,.45);position:relative;}
+        .authCard h2{margin:0 0 8px;font-size:1.2rem;}
+        .authCard p{margin:0 0 12px;color:#92a0b8;line-height:1.4;}
+        .authCard label{display:block;font-size:13px;color:#92a0b8;margin:10px 0 6px;}
+        .authCard input{width:100%;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:#0e1525;color:#e9edf5;padding:10px 12px;font-size:14px;}
+        .authCard input:focus{outline:none;box-shadow:0 0 0 3px rgba(59,130,246,.25);}
+        .authCard .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:14px;}
+        .authCard .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 14px;border-radius:12px;font-weight:700;border:1px solid rgba(255,255,255,.08);background:#0e1525;color:#e9edf5;cursor:pointer;text-decoration:none;}
+        .authCard .btn.primary{background:linear-gradient(135deg,#22d3ee,#3b82f6);color:#06111d;border:none;}
+        .authClose{position:absolute;right:10px;top:10px;background:transparent;border:none;color:#92a0b8;font-size:18px;cursor:pointer;}
+        .authStatus{margin-top:8px;font-size:13px;color:#92a0b8;}
+      `;
+      document.head.appendChild(style);
+
+      const overlay = document.createElement('div');
+      overlay.className = 'authModalOverlay';
+      overlay.id = 'authModal';
+      overlay.innerHTML = `
+        <div class="authCard">
+          <button class="authClose" aria-label="Close">×</button>
+          <h2>Authenticate</h2>
+          <p>Paste your Bearer token and Org ID. Saved locally for all tools.</p>
+          <label for="authBearer">Bearer token</label>
+          <input id="authBearer" type="password" autocomplete="off" placeholder="Paste Bearer token" />
+          <label for="authOrg">Org ID</label>
+          <input id="authOrg" type="text" autocomplete="off" placeholder="Paste Org ID" />
+          <div class="actions">
+            <a class="btn" href="https://developer.webex.com/docs/api/getting-started" target="_blank" rel="noreferrer">Get token</a>
+            <button class="btn primary" id="authSave">Save</button>
+          </div>
+          <div class="authStatus" id="authStatus"></div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+
+      const bearerEl = overlay.querySelector('#authBearer');
+      const orgEl = overlay.querySelector('#authOrg');
+      const statusEl = overlay.querySelector('#authStatus');
+      const closeBtn = overlay.querySelector('.authClose');
+      const saveBtn = overlay.querySelector('#authSave');
+      const KEYS = { bearer:'authBearer', org:'authOrg', orgName:'authOrgName' };
+
+      const populate = ()=> {
+        bearerEl.value = localStorage.getItem(KEYS.bearer) || '';
+        orgEl.value = localStorage.getItem(KEYS.org) || '';
+        statusEl.textContent = localStorage.getItem(KEYS.orgName) ? `Org: ${localStorage.getItem(KEYS.orgName)}` : '';
+      };
+
+      const fetchOrgName = async (bearer, orgId) => {
+        try {
+          const res = await fetch(`https://webexapis.com/v1/organizations/${encodeURIComponent(orgId)}`, { headers:{Authorization:`Bearer ${bearer}`}});
+          const data = await res.json();
+          return data.displayName || data.name || data.organization?.displayName || data.organization?.name || orgId;
+        } catch { return ''; }
+      };
+
+      saveBtn.addEventListener('click', async ()=>{
+        const b = bearerEl.value.trim();
+        const o = orgEl.value.trim();
+        localStorage.setItem(KEYS.bearer, b);
+        localStorage.setItem(KEYS.org, o);
+        statusEl.textContent = 'Saved';
+        if (b && o) {
+          statusEl.textContent = 'Looking up org...';
+          const name = await fetchOrgName(b, o);
+          if (name) {
+            localStorage.setItem(KEYS.orgName, name);
+            statusEl.textContent = `Saved — Org: ${name}`;
+          } else {
+            statusEl.textContent = 'Saved (org lookup failed)';
+          }
+        }
+        updateAuthIndicators();
+        setTimeout(()=>{ overlay.classList.remove('open'); }, 1200);
+      });
+
+      const close = ()=> overlay.classList.remove('open');
+      closeBtn.addEventListener('click', close);
+      overlay.addEventListener('click',(e)=>{ if (e.target === overlay) close(); });
+      window.addEventListener('keydown',(e)=>{ if (e.key === 'Escape') close(); });
+
+      const open = ()=> { populate(); overlay.classList.add('open'); };
+      document.querySelectorAll('.authLink').forEach(el=>{
+        el.addEventListener('click',(e)=>{ e.preventDefault(); open(); });
+      });
+    })();
+
+    function updateAuthIndicators() {
+      const b = localStorage.getItem('authBearer') || '';
+      const org = localStorage.getItem('authOrgName') || localStorage.getItem('authOrg') || '';
+      document.querySelectorAll('.authLink').forEach(el=>{
+        if (b) { el.classList.add('authed'); el.textContent = 'Authenticated'; }
+        else { el.classList.remove('authed'); el.textContent = 'Authenticate'; }
+      });
+      const tag = document.getElementById('orgTag');
+      if (tag) tag.textContent = org ? `Org: ${org}` : 'Not authenticated';
+    }
+    updateAuthIndicators();
+  </script>
+</body>
+</html>
