@@ -503,12 +503,30 @@
       searchBodyEl.placeholder = example;
 
       if (updateBody) {
-        let template = searchBodyEl.value.trim();
-        if (presetKey) {
-          const preset = presets.find(p => p.key === presetKey);
-          if (preset) template = preset.query;
+        const currentVal = searchBodyEl.value.trim();
+        const presetTemplate = (() => {
+          if (!presetKey) return '';
+          const preset = presets.find((p) => p.key === presetKey);
+          return preset ? preset.query : '';
+        })();
+
+        const hasPlaceholders = /{{FROM}}|{{TO}}/.test(currentVal);
+        const templateFromDataset = searchBodyEl.dataset.template || '';
+
+        let template = presetTemplate || (hasPlaceholders ? currentVal : templateFromDataset);
+
+        // If we still don't have a template, try to derive one by swapping the current epoch numbers with placeholders
+        if (!template) {
+          template = currentVal
+            .replace(/(from:\s*)\d+/i, '$1{{FROM}}')
+            .replace(/(to:\s*)\d+/i, '$1{{TO}}');
         }
-        if (!template) template = DEFAULT_BODY;
+
+        if (!template.trim()) template = DEFAULT_BODY;
+
+        // Store the template so future updates can re-inject new epoch values even after they were replaced
+        searchBodyEl.dataset.template = template;
+
         searchBodyEl.value = applyEpochToQuery(template);
         delete searchBodyEl.dataset.example;
       }
@@ -774,17 +792,22 @@
       pathListEl.innerHTML = '';
       if (!lastJson || typeof lastJson !== 'object') return;
       const paths = [];
-      const add = (p) => { if (paths.length < 20) paths.push(p); };
+      const MAX_PATHS = 40;
+      const MAX_DEPTH = 8; // allow nested array/object hops (e.g., ...[0].aggregation[0].value)
+      const add = (p) => { if (paths.length < MAX_PATHS) paths.push(p); };
       const queue = [['$', lastJson, 0]];
-      while (queue.length && paths.length < 20) {
+      while (queue.length && paths.length < MAX_PATHS) {
         const [p, val, depth] = queue.shift();
-        if (depth > 3) continue;
+        if (depth > MAX_DEPTH) continue;
         if (Array.isArray(val)) {
           add(p);
           if (val[0] !== undefined) queue.push([`${p}[0]`, val[0], depth + 1]);
         } else if (val && typeof val === 'object') {
           add(p);
           Object.keys(val).slice(0, 6).forEach((k) => queue.push([`${p}.${k}`, val[k], depth + 1]));
+        } else {
+          // primitives/null — surface full path to values like ".name" or ".value"
+          add(p);
         }
       }
       paths.forEach(p => {
